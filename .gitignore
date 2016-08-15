@@ -10,3 +10,5 @@
 .idea/vcs.xml
 
 .idea/workspace.xml
+
+.idea/vagrant.xml
