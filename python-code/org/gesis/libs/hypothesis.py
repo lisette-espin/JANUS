@@ -2,6 +2,11 @@ from __future__ import division, absolute_import, print_function
 __author__ = 'espin'
 
 ################################################################################
+### Local Dependencies
+################################################################################
+from org.gesis.libs import graph as c
+
+################################################################################
 ### Global Dependencies
 ################################################################################
 from sklearn.preprocessing import normalize
@@ -24,45 +29,44 @@ class Hypothesis(object):
     ######################################################
     def __init__(self, name, dependency, output, belief=None):
         '''
-        Constructor of Hypothesis
-        :param name:
-        :param belief:
-        :param dependency:
+        :param name:       string
+        :param dependency: global or local
+        :param output:     path
+        :param belief:     nxn
         :return:
         '''
         self.name = name
         self.dependency = dependency
         self.outout = output
         self.beliefnorm = None
+        self.nnodes = -1 if belief is None else belief.shape[0]
         self._normalize(belief)
+
 
     ######################################################
     # ELICITING PRIOR
     ######################################################
     def elicit_prior(self, k, copy=True):
-        '''
-        Elicits prior. Mutliplies normbelief by weighting factor k.
-        It also adds k to those cells with no value
-        :param k:
-        :return:
-        '''
-        proto = 1.
-        concentration =  proto + k
+        proto = 1.0
+        kappa =  self.nnodes * k
 
-        if k in [0.,0.1]:
+        if k in [0.,0.1] or self.beliefnorm.size == 0:
             prior = lil_matrix(self.beliefnorm.shape, dtype=np.float64)
+            prior[:] = proto + k
         else:
             self.beliefnorm = lil_matrix(self.beliefnorm)
-            if copy:
-                prior = self.beliefnorm.copy() * k
-            else:
-                prior = self.beliefnorm * k
 
-        # also consider those rows which only include zeros
-        norma = prior.sum(axis=1)
-        n_zeros,_ = np.where(norma == 0)
-        prior[n_zeros,:] = 1 / float(concentration)
-        return prior.tocsr()
+            if copy:
+                prior = self.beliefnorm.copy() * kappa
+            else:
+                prior = self.beliefnorm * kappa
+
+            ### rows only 0 --> k
+            norma = prior.sum(axis=1)
+            n_zeros,_ = np.where(norma == 0)
+            prior[n_zeros,:] = k
+
+        return csr_matrix(prior)
 
 
     ######################################################
@@ -70,6 +74,8 @@ class Hypothesis(object):
     ######################################################
     def _normalize(self, belief, copy=True):
         if belief is not None:
+            if self.dependency == c.GLOBAL:
+                belief = csr_matrix(belief.toarray().flatten())
             self.beliefnorm = normalize(belief, axis=1, norm='l1', copy=copy)
 
     def getFileName(self):
@@ -87,8 +93,8 @@ class Hypothesis(object):
         fn = self.getFileName()
         if os.path.exists(fn):
             self.beliefnorm = csr_matrix(np.loadtxt(fn, delimiter=DEL))
-            print('- hypothesis loaded: {}'.format(self.name))
-        return None
+            self.nnodes = self.beliefnorm.shape[1]
+            print('- hypothesis {} loaded: {}'.format(self.beliefnorm.shape,self.name))
 
 
 

@@ -52,55 +52,36 @@ def run_janus(nnodes,algorithm,isdirected,isweighted,ismultigraph,selfloops,depe
     janus.createHypothesis('selfloop')
     janus.createHypothesis('assortativity8020',hyp_assortativity(janus.graph,80,20))
     janus.createHypothesis('assortativity2080',hyp_assortativity(janus.graph,20,80))
-    janus.createHypothesis('noise10',hyp_noise(janus.graph,5))
+    janus.createHypothesis('noise5',hyp_noise(janus.graph,5))
     janus.createHypothesis('noise10',hyp_noise(janus.graph,10))
-    janus.createHypothesis('noise10',hyp_noise(janus.graph,50))
+    janus.createHypothesis('noise50',hyp_noise(janus.graph,50))
 
     # ### 4. evidences
     janus.generateEvidences(kmax,klogscale)
     stop = time.time()
     janus.showRank(krank)
     janus.saveEvidencesToFile()
-    janus.plotEvidences()
+    janus.plotEvidences(krank)
     janus.saveReadme(start,stop)
 
 def hyp_noise(graph, noise):
-    tmp = graph.data.copy()
+    tmp = lil_matrix((graph.nnodes,graph.nnodes))
     e = np.random.randint(noise*-1, noise+1,(tmp.shape))
-    e[np.where(e < 0)] = 0.
-    return csr_matrix(tmp + e)
+    if graph.dependency == c.GLOBAL:
+        e = e.flatten()
+    tmp = e + graph.data
+    tmp[np.where(tmp < 0)] = 0.
+    tmp = tmp.reshape((graph.nnodes,graph.nnodes))
+    return csr_matrix(tmp)
 
 def hyp_assortativity(graph,value_eq,value_neq):
     bm = graph._args['blocks']
-    tmp = lil_matrix(graph.data.shape)
-    nnodes = graph.nnodes
-
-    for source in range(graph.data.shape[0]):
-        for target in range(source+1, graph.data.shape[1]):
-
-            if graph.dependency == c.GLOBAL:
-                ### source is always 0
-                ### target is an index (from a matrix 1xnnodes)
-                row = int(target / nnodes)
-                col = target - (nnodes * row)
-                rt = col
-                ct = row
-                newtarget = ct + (rt * nnodes)
-                sourcenode = row
-                targetnode = col
-            else:
-                sourcenode = source
-                targetnode = target
-
-            value = value_eq if bm[sourcenode] == bm[targetnode] else value_neq
+    tmp = lil_matrix((graph.nnodes,graph.nnodes))
+    for source in range(graph.nnodes):
+        for target in range(source+1, graph.nnodes):
+            value = value_eq if bm[source] == bm[target] else value_neq
             tmp[source,target] = value
-
-            if graph.dependency == c.LOCAL:
-                tmp[target,source] = value
-
-            elif graph.dependency == c.GLOBAL:
-                tmp[source,newtarget] = value
-
+            tmp[target,source] = value
     tmp.setdiag(0.)
     return tmp.tocsr()
 
@@ -174,10 +155,10 @@ if __name__ == '__main__':
     isweighted = False
     ismultigraph = True
     selfloops = True
-    dependency = c.GLOBAL
-    kmax = 5
+    dependency = c.LOCAL
+    kmax = 3
     klogscale = True
-    krank = 100000
+    krank = 1000
     algorithm = ALGORITHM
     output = '../resources/{}_nodes-{}_directed-{}_weighted-{}_multigraph-{}_selfloops-{}_dependency-{}'.format(algorithm,nnodes,isdirected,isweighted,ismultigraph,selfloops,dependency)
 

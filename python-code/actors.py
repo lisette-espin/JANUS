@@ -55,7 +55,7 @@ def run_janus(nnodes,algorithm,isdirected,isweighted,ismultigraph,selfloops,depe
     stop = time.time()
     janus.showRank(krank)
     janus.saveEvidencesToFile()
-    janus.plotEvidences()
+    janus.plotEvidences(krank)
     janus.saveReadme(start,stop)
 
 def getMatrix(datasets,output):
@@ -80,9 +80,9 @@ if __name__ == '__main__':
     ismultigraph = True
     selfloops = True
     dependency = c.LOCAL
-    kmax = 5
+    kmax = 3
     klogscale = True
-    krank = 100000
+    krank = 1000
     algorithm = ALGORITHM
     output = '../resources/actors'
 

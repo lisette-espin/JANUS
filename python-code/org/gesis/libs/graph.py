@@ -164,7 +164,10 @@ class GraphTool(Graph):
         self._args['blocks'] = G.vp.blocks
         self.nnodes = G.num_vertices()
         self.nedges = G.num_edges()
-        self.data = gt.adjacency(G)
+        self.data = lil_matrix((self.nnodes,self.nnodes))
+        for e in G.edges():
+            self.data[G.vertex_index[e.source()],G.vertex_index[e.target()]] += 1.
+        self.data = self.data.tocsr()
         super(GraphTool, self).extractData(G)
 
     def saveGraph(self, G):

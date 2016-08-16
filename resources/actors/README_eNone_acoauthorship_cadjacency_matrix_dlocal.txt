@@ -10,4 +10,4 @@ ALGORITHM: coauthorship
 CLASSTYPE: adjacency_matrix
 SHAPE: (4, 4)
 SUM DATA: 30.0
-RUNTIME: 0.539720058441 seconds
+RUNTIME: 1.41755104065 seconds

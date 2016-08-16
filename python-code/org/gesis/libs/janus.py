@@ -20,6 +20,7 @@ import operator
 import os
 import pickle
 import gc
+import collections
 
 ################################################################################
 ### CONSTANTS
@@ -89,12 +90,12 @@ class JANUS(object):
             self.evidences[hname] = {}
 
             for k in self.weighting_factors:
-                print('- k={}...'.format(k))
                 prior = belief.elicit_prior(k)
                 e = self.computeEvidence(prior)
                 self.evidences[hname][k] = e
+                print('- k={}: {}'.format(k,e))
                 del(prior)
-            gc.collect()
+                gc.collect()
 
     def _setWeightingFactors(self, max, logscale=False):
         self._klogscale = logscale
@@ -120,7 +121,7 @@ class JANUS(object):
     # 4. RESULTS
     ######################################################
 
-    def plotEvidences(self):
+    def plotEvidences(self, krank=None):
         fig = plt.figure(figsize=(9, 6))
         ax = fig.add_subplot(111)
         fig.canvas.draw()
@@ -141,8 +142,12 @@ class JANUS(object):
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
         handles, labels = ax.get_legend_handles_labels()
-        #lgd = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5,-0.1))
-        lgd = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.28,0.50))
+        if krank is not None:
+            tmp = {hname:ev for hname, evistyobj in self.evidences.items() for k,ev in evistyobj.items() if k == krank}
+            t = [(l,h,tmp[l]) for l,h in zip(labels, handles)]
+            labels, handles, evidences = zip(*sorted(t,key=lambda t: t[2],reverse=True))
+
+        lgd = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.25,0.55))
         ax.grid('on')
 
         plt.savefig(self.getFilePathName('evidences','pdf'), bbox_extra_artists=(lgd,), bbox_inches='tight')
