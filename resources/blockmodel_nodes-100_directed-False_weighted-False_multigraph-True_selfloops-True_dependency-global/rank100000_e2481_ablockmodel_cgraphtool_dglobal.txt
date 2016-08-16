@@ -1,0 +1,8 @@
+Data generated as blockmodel
+===== RANK k=100000 =====
+data                     -40252.631
+noise10                  -44367.625
+assortativity8020        -44788.404
+assortativity2080        -48624.637
+selfloop                 -56502.655
+uniform                  -78595.551

@@ -1,33 +1,33 @@
 from __future__ import division, print_function
 __author__ = 'espin'
 
-################################################################################
+#########################################################################################################
 ### Global Dependencies
-################################################################################
+#########################################################################################################
 import matplotlib
-#matplotlib.use("macosx")
+matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 import networkx as nx
 from scipy.sparse import csr_matrix, lil_matrix
 import os
-import sys
 import graph_tool.all as gt
 import numpy as np
+import pandas as pd
 
-################################################################################
+#########################################################################################################
 ### CONSTANTS
-################################################################################
+#########################################################################################################
 GRAPHTOOL = 'graphtool'
 NETWORKX = 'networkx'
 ADJACENCY = 'adjacency_matrix'
+DATAFRAME = 'dataframe'
 LOCAL = 'local'
 GLOBAL = 'global'
-EXT = {GRAPHTOOL:'graphml',NETWORKX:'graphml',ADJACENCY:'matrix'}
+DEL = ','
 
-################################################################################
+#########################################################################################################
 ### Main Class: JANUS
-################################################################################
-
+#########################################################################################################
 class Graph(object):
 
     ######################################################
@@ -48,88 +48,35 @@ class Graph(object):
         self.validateInput()
 
     def validateInput(self):
-        '''
-        Validates whether the type of graph is implemented or not
-        :return:
-        '''
         if self.isweighted or not self.ismultigraph:
             raise Exception('ERROR: We are sorry, only unweighted multigraphs are implemented!')
-            sys.exit(0)
-
 
     ######################################################
-    # SET DATA GRAPH
+    # FILE NAMES
     ######################################################
-    def setData(self, G):
-        if self.classtype == NETWORKX:
-            self._setDataGraphNx(G)
-        if self.classtype == GRAPHTOOL:
-            self._setDataGraphTool(G)
-        if self.classtype == ADJACENCY:
-            self._setDataMatrix(G)
+    def getFileNameGraph(self):
+        fn = 'graph_a{}_c{}.graphml'.format(self.algorithm,self.classtype)
+        return os.path.join(self.output,fn)
 
-    def _setDataGraphTool(self, G):
-        self._args['blocks'] = G.vp.blocks
-        self.nnodes = G.num_vertices()
-        self.nedges = G.num_edges()
+    def getFileNamePlot(self, type):
+        fn = '{}_a{}_c{}.pdf'.format(type, self.algorithm,self.classtype)
+        return os.path.join(self.output,fn)
 
-        self.data = lil_matrix((G.num_vertices(),G.num_vertices()))
-        for edge in G.edges():
-            if edge.is_valid():
-                self.data[G.vertex_index[edge.source()],G.vertex_index[edge.target()]] += 1.
-                if not G.is_directed():
-                    self.data[G.vertex_index[edge.target()],G.vertex_index[edge.source()]] += 1.
-        self.data = self.data.tocsr()
-
-        if self.dependency == GLOBAL:
-            self.data = csr_matrix(self.data.toarray().flatten())
-
-        #self.setVocabulary(G)
-        self.showInfo(G)
-        self.save(G)
-        del(G)
-
-    def _setDataGraphNx(self, G):
-        self.data = csr_matrix(nx.adjacency_matrix(G))
-        self.nnodes = nx.number_of_nodes(G)
-        self.nedges = nx.number_of_edges(G)
-
-        if self.dependency == GLOBAL:
-            self.data = csr_matrix(self.data.toarray().flatten())
-
-        #self.setVocabulary(G)
-        self.showInfo(G)
-        self.save(G)
-        del(G)
-
-    def _setDataMatrix(self, A):
-        self.data = A.copy()
-        self.nedges = (self.data > 0).sum()
-
-        ### for the optimal case: 1xn
-        if len(self.data.shape) == 1:
-            self.data = self.data.reshape(-1, 1)
-
-        if self.dependency == GLOBAL and self.data.shape[0] > 1.:
-                self.data = csr_matrix(self.data.toarray().flatten())
-                self.nnodes = np.sqrt(self.data.shape[1])
-        else:
-            self.nnodes = self.data.shape[0]
-
-        #self.setVocabulary()
-        self.showInfo()
-        self.save()
-        del(A)
-
+    def getFileNameAdjacency(self):
+        fn = 'data_a{}_c{}.matrix'.format(self.algorithm,self.classtype)
+        return os.path.join(self.output,fn)
 
     ######################################################
-    # HANDLERS
+    # I/O
     ######################################################
+    def fileExists(self, fn):
+        return os.path.exists(fn)
+
     def showInfo(self, G=None):
         if G is not None:
-            self._plotGraph(G)
-            self._plotDegreeDistribution(G)
-            self._plotWeightDistribution(G)
+            self.plotGraph(G)
+            self.plotDegreeDistribution(G)
+            self.plotWeightDistribution(G)
         if self.data is not None:
             print('Dependency: {}'.format(self.dependency))
             print('Adjacency Matrix shape: {}'.format(self.data.shape))
@@ -138,122 +85,240 @@ class Graph(object):
             raise Exception('There is no data loaded!')
 
     ######################################################
-    # FILES
+    # SET DATA GRAPH
     ######################################################
-    def getFilePathName(self,type,ext=None):
-        '''
-        type: data, weightdist, degreedist
-        :param type:
-        :param ext:
-        :return:
-        '''
-        if ext is None:
-            if not self.classtype in EXT:
-                raise Exception('ERROR: No extension specified for {}'.format(self.classtype))
-            ext = EXT[self.classtype]
-        fn = '{}_a{}_c{}.{}'.format(type,self.algorithm,self.classtype, ext)
-        return os.path.join(self.output, fn)
+    def extractData(self, G=None):
+        if self.dependency == GLOBAL:
+            self.data = csr_matrix(self.data.toarray().flatten())
 
-    def save(self, G=None):
-        fn = self.getFilePathName('data')
-        if not self.exists():
-            if G is not None:
-                if self.classtype == NETWORKX:
-                    nx.write_graphml(G,fn)
-                elif self.classtype == GRAPHTOOL:
-                    G.save(fn)
-            elif self.data is not None and self.classtype == ADJACENCY:
-                np.savetxt(fn, self.data.toarray(), delimiter=',', fmt='%.3f')
-            else:
-                raise Exception('ERROR: No graph to be saved, no classtype specified!')
-            print('GRAPH SAVED!')
+    def saveAll(self, G):
+        self.showInfo(G)
+        self.saveGraph(G)
+        self.saveData()
+        del(G)
 
-    def load(self):
-        fn = self.getFilePathName('data')
+    def loadData(self):
+        fn = self.getFileNameAdjacency()
+        self.data = csr_matrix(np.loadtxt(fn, delimiter=DEL))
+        print('- data loaded')
 
-        if not os.path.exists(fn):
-            raise Exception('ERROR: File does not exist: {}'.format(fn))
+    def saveData(self):
+        fn = self.getFileNameAdjacency()
+        if not self.fileExists(fn):
+            np.savetxt(fn, self.data.toarray(), delimiter=DEL, fmt='%.6f')
+            print('- data (adjacency matrix) saved')
 
-        if self.classtype == NETWORKX:
-            g = nx.read_graphml(fn)
+    def saveGraph(self):
+        print('graph: save graph')
+        return
 
-        elif self.classtype == GRAPHTOOL:
-            g = gt.load_graph(fn)
+    def loadGraph(self):
+        return
 
-        elif self.classtype == ADJACENCY:
-            g = np.loadtxt(fn)
-
-        else:
-            raise Exception('ERROR: No graph to read, no classtype specified!')
-        print('GRAPH LOADED!')
-        return g
-
-    def exists(self):
-        return os.path.exists(self.getFilePathName('data'))
-
+    def setData(self, data):
+        self.data = data
 
     ######################################################
     # PLOTS
     ######################################################
-    def _plotGraph(self, G=None):
-        if G is None:
-            raise Exception('ERROR: There is no graph loaded')
-        fn = self.getFilePathName('graph','pdf')
-        if self.classtype == NETWORKX:
-            print(nx.info(G))
-            pos = nx.spring_layout(G)
-            nx.draw(G)
+    def plotGraph(self):
+        print('- plot graph done!')
+
+    def plotDegreeDistribution(self, degree_sequence):
+        if degree_sequence is not None:
+            fn = self.getFileNamePlot('degree')
+            plt.plot(degree_sequence,'b-',marker='o')
+            plt.title("Degree rank plot")
+            plt.ylabel("degree")
+            plt.xlabel("node instances")
             plt.savefig(fn)
             plt.close()
-        elif self.classtype == GRAPHTOOL:
-            pos = gt.arf_layout(G, max_iter=1000)
-            gt.graph_draw(G, pos=pos, vertex_fill_color=G.vp.blocks, edge_color="black", output=fn)
-        elif self.classtype == ADJACENCY:
-            print('WARNING: Data matrix is not a graph!')
-        else:
-            raise Exception('ERROR: Type {} does not exist'.format(self.classtype))
-        print('PLOT GRAPH DISTRIBUTION DONE!')
+            print('- plot degree distribution done!')
 
-    def _plotDegreeDistribution(self, G):
-        if self.classtype == NETWORKX:
-            degree_sequence = sorted(nx.degree(G).values(),reverse=True)
-        elif self.classtype == GRAPHTOOL:
-            degree = []
-            for v in G.vertices():
-                d = v.out_degree()
-                degree.append(d)
-            degree_sequence = sorted(degree, reverse=False)
-        else:
-            raise Exception('ERROR: Type {} does not exist'.format(self.classtype))
-        plt.plot(degree_sequence,'b-',marker='o')
-        plt.title("Degree rank plot")
-        plt.ylabel("degree")
-        plt.xlabel("node instances")
-        plt.savefig(self.getFilePathName('degreedist','pdf'))
-        plt.close()
-        print('PLOT DEGREE DISTRIBUTION DONE!')
-
-    def _plotWeightDistribution(self, G):
-        if self.isweighted:
-            if self.classtype == NETWORKX:
-                weight_sequence = [w['weight'] for i,j,w in G.edges(data=True)]
-            else:
-                # weight = self._args['edge_attributes']['weight']
-                # d = G.degree_property_map("out", weight)      # weight is an edge property map
-                # bins = np.linspace(d.a.min(), d.a.max(), 40)  # linear bins
-                # c,b = gt.vertex_hist(G, d, bins)
-                # plt.hist(c,b)
-                weight_sequence = []
-                for edge in G.edges():
-                    weight_sequence.append(self._args['edge_attributes']['weight'][edge.source()])
-
-            weight_sequence = sorted(weight_sequence ,reverse=True)
+    def plotWeightDistribution(self, weight_sequence):
+        if weight_sequence is not None:
+            fn = self.getFileNamePlot('weights')
             plt.plot(weight_sequence,'b-',marker='o')
             plt.title("Weight rank plot")
             plt.ylabel("weight")
             plt.xlabel("edge instance")
-            plt.savefig(self.getFilePathName('weightdist','pdf'))
+            plt.savefig(fn)
             plt.close()
             print('PLOT WEIGHT DISTRIBUTION DONE!')
-        else:
-            print('NO PLOT OF WEIGHT DISTRIBUTION (GRAPH IS UNWEIGHTED)')
+
+#########################################################################################################
+### GraphTool
+#########################################################################################################
+class GraphTool(Graph):
+
+    ######################################################
+    # INITIALIZATION
+    ######################################################
+    def __init__(self,isdirected,isweighted,ismultigraph,dependency,algorithm,output):
+        super(GraphTool, self).__init__(isdirected,isweighted,ismultigraph,dependency,algorithm,GRAPHTOOL,output)
+
+    ######################################################
+    # SET DATA GRAPH
+    ######################################################
+    def extractData(self, G):
+        self._args['blocks'] = G.vp.blocks
+        self.nnodes = G.num_vertices()
+        self.nedges = G.num_edges()
+        self.data = gt.adjacency(G)
+        super(GraphTool, self).extractData(G)
+
+    def saveGraph(self, G):
+        fn = self.getFileNameGraph()
+        if not self.fileExists(fn):
+            G.save(fn)
+            print('- graph saved!')
+
+    def loadGraph(self):
+        fn = self.getFileNameGraph()
+        if not self.fileExists(fn):
+            return None
+        g = gt.load_graph(fn)
+        print('- graph loaded!')
+        return g
+
+    ######################################################
+    # PLOTTING
+    ######################################################
+    def plotGraph(self, G):
+        if G is not None:
+            fn = self.getFileNamePlot('graph')
+            if not self.fileExists(fn):
+                pos = gt.arf_layout(G, max_iter=1000)
+                gt.graph_draw(G, pos=pos, vertex_fill_color=G.vp.blocks, edge_color="black", output=fn)
+                super(GraphTool, self).plotGraph()
+
+    def plotDegreeDistribution(self, G):
+        if not self.fileExists(self.getFileNamePlot('degree')):
+            if G is not None:
+                degree = []
+                for v in G.vertices():
+                    d = v.out_degree()
+                    degree.append(d)
+                degree_sequence = sorted(degree, reverse=False)
+                super(GraphTool, self).plotDegreeDistribution(degree_sequence)
+
+    def plotWeightDistribution(self, G):
+        if not self.fileExists(self.getFileNamePlot('weights')):
+            if G is not None:
+                try:
+                    weight_sequence = []
+                    for edge in G.edges():
+                        #weight_sequence.append(self._args['edge_attributes']['weight'][edge.source()])
+                        weight_sequence.append(G.ep.weights[edge.source()])
+                    weight_sequence = sorted(weight_sequence ,reverse=True)
+                    super(GraphTool, self).plotWeightDistribution(weight_sequence)
+                except Exception:
+                    return
+
+
+#########################################################################################################
+### NetworkX
+#########################################################################################################
+class NetworkX(Graph):
+
+    ######################################################
+    # INITIALIZATION
+    ######################################################
+    def __init__(self,isdirected,isweighted,ismultigraph,dependency,algorithm,output):
+        super(NetworkX, self).__init__(isdirected,isweighted,ismultigraph,dependency,algorithm,NETWORKX,output)
+
+    ######################################################
+    # SET DATA GRAPH
+    ######################################################
+    def extractData(self, G):
+        self.data = csr_matrix(nx.adjacency_matrix(G))
+        self.nnodes = nx.number_of_nodes(G)
+        self.nedges = nx.number_of_edges(G)
+        super(NetworkX, self).extractData(G)
+
+    def saveGraph(self, G):
+        fn = self.getFileNameGraph()
+        if not self.fileExists(fn):
+            nx.write_graphml(G,fn)
+            print('- graph saved!')
+
+    def loadGraph(self):
+        fn = self.getFileNameGraph()
+        g = nx.read_graphml(fn)
+        print('- graph loaded!')
+        return g
+
+    ######################################################
+    # PLOTTING
+    ######################################################
+    def plotGraph(self, G):
+        if G is not None:
+            fn = self.getFileNamePlot('graph')
+            pos = nx.spring_layout(G)
+            nx.draw(G)
+            plt.savefig(fn)
+            plt.close()
+            print(nx.info(G))
+            super(NetworkX, self).plotGraph()
+
+    def plotDegreeDistribution(self, G):
+        if G is not None:
+            degree_sequence = sorted(nx.degree(G).values(),reverse=True)
+            super(NetworkX, self).plotDegreeDistribution(degree_sequence)
+
+    def plotWeightDistribution(self, G):
+        if G is not None:
+            try:
+                weight_sequence = [w['weight'] for i,j,w in G.edges(data=True)]
+                super(NetworkX, self).plotWeightDistribution(weight_sequence)
+            except Exception:
+                return
+
+
+#########################################################################################################
+### Dataframe
+#########################################################################################################
+class DataframePandas(Graph):
+
+    ######################################################
+    # INITIALIZATION
+    ######################################################
+    def __init__(self,isdirected,isweighted,ismultigraph,dependency,algorithm,output):
+        super(DataframePandas, self).__init__(isdirected,isweighted,ismultigraph,dependency,algorithm,DATAFRAME,output)
+
+    ######################################################
+    # SET DATA GRAPH
+    ######################################################
+    def extractData(self, dataframe):
+        uv = pd.concat([dataframe.source,dataframe.target]).unique()
+        pivoted = dataframe.pivot(index='source', columns='target', values='weight')
+        print('- Dataframe pivoted.')
+
+        ### fullfilling target nodes that are not as source
+        indexes = uv.tolist()
+        pivoted = pd.DataFrame(data=pivoted, index=indexes, columns=indexes, copy=False)
+        pivoted = pivoted.fillna(0.)
+        print('- Dataframe nxn.')
+
+        self.data = csr_matrix(pivoted.as_matrix())
+        self.nnodes = len(indexes)
+        self.nedges = pivoted.sum()
+        super(DataframePandas, self).extractData()
+
+    def saveGraph(self, G):
+        return
+
+    def loadGraph(self):
+        return
+
+    ######################################################
+    # PLOTTING
+    ######################################################
+    def plotGraph(self, G):
+        return
+
+    def plotDegreeDistribution(self, G):
+        return
+
+    def plotWeightDistribution(self, G):
+        return

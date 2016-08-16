@@ -1,4 +1,4 @@
-# from __future__ import division, print_function
+from __future__ import division, print_function
 __author__ = 'espin'
 
 ################################################################################
@@ -13,16 +13,16 @@ from org.gesis.libs import graph as c
 ### Global Dependencies
 ################################################################################
 from scipy.sparse import csr_matrix, lil_matrix
-import os
 import time
 import pandas as pd
-import numpy as np
+import os
+import gc
 
 ################################################################################
 ### CONSTANTS
 ################################################################################
 ALGORITHM = 'retweetnet'
-FN = {'retweet':'higgs-retweet_network.edgelist', 'mention':'higgs-mention_network.edgelist', 'replies':'higgs-reply_network.edgelist', 'social':'higgs-social_network.edgelist'}
+FN = {'retweet':'higgs-retweet_network.edgelist', 'mention':'higgs-mention_network.edgelist', 'reply':'higgs-reply_network.edgelist', 'social':'higgs-social_network.edgelist'}
 
 ################################################################################
 ### Functions
@@ -42,14 +42,15 @@ def run_janus(isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscal
     janus.saveHypothesisToFile(Hypothesis('data',janus.graph.data,dependency))
     janus.saveHypothesisToFile(Hypothesis('uniform',csr_matrix(janus.graph.data.shape),dependency))
     janus.saveHypothesisToFile(hyp_selfloops(dependency,graph))
-    janus.saveHypothesisToFile(Hypothesis('replies',loadMatrix(['replies'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('social',loadMatrix(['social'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('replies',loadMatrix(['replies'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('mentions',loadMatrix(['mentions'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('social_replies_mentions',loadMatrix(['social','replies','mentions'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('social_mentions',loadMatrix(['social','mentions'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('social_replies',loadMatrix(['social','replies'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('mentions_replies',loadMatrix(['mentions','replies'],output),dependency))
+
+    janus.saveHypothesisToFile(Hypothesis('replies',loadMatrix(['reply'],output),dependency))
+    janus.saveHypothesisToFile(Hypothesis('social',loadMatrix(['social'],output),dependency))
+    # janus.saveHypothesisToFile(Hypothesis('replies',loadMatrix(['replie'],output),dependency))
+    # janus.saveHypothesisToFile(Hypothesis('mentions',loadMatrix(['mention'],output),dependency))
+    janus.saveHypothesisToFile(Hypothesis('social-replies-mentions',loadMatrix(['social','reply','mention'],output),dependency))
+    # janus.saveHypothesisToFile(Hypothesis('social_mentions',loadMatrix(['social','mention'],output),dependency))
+    # janus.saveHypothesisToFile(Hypothesis('social_replies',loadMatrix(['social','reply'],output),dependency))
+    # janus.saveHypothesisToFile(Hypothesis('mentions_replies',loadMatrix(['mention','reply'],output),dependency))
 
     ### 4. evidences
     janus.generateEvidences(kmax,klogscale)
@@ -71,7 +72,6 @@ def hyp_selfloops(dependency,graph):
         tmp = csr_matrix(tmp.toarray().flatten())
     return Hypothesis('selfloops',tmp,dependency)
 
-
 ################################################################################
 ### Data Specific:
 ################################################################################
@@ -79,32 +79,32 @@ def loadMatrix(datasets,path):
 
     dataframe = None
     for dataset in datasets:
-
         fn = os.path.join(path,FN[dataset])
-        if sum([1 for f in os.listdir(path) if f.startswith('hypothesis') and dataset in f and f.endswith('.matrix')]) > 0:
-            print('DATAFRAME HAS BEEN ALREADY LOADED: {}'.format(fn))
-            return None
 
-        if dataframe is None:
-            dataframe = pd.read_csv(fn, sep=" ", header = None, names=["source", "target", "weight"])
-        else:
-            dataframe.add(pd.read_csv(FN[dataset], sep=" ", header = None, names=["source", "target", "weight"]), fill_value=0.)
-        print('DATAFRAME LOADED: {}'.format(fn))
+        ### if it doesnt exist as a hypothesis
+        if sum([1 for f in os.listdir(path) if f.startswith('hypothesis') and dataset in f and f.endswith('.matrix')]) <= 0:
+            if dataframe is None:
+                dataframe = pd.read_csv(fn, sep=" ", header = None, names=["source", "target", "weight"])
+            else:
+                dataframe.add(pd.read_csv(fn, sep=" ", header = None, names=["source", "target", "weight"]), fill_value=0.)
+            print('- Dataframe added: {}'.format(fn))
 
-    uv = pd.concat([dataframe.source,dataframe.target]).unique()
-    pivoted = dataframe.pivot(index='source', columns='target', values='weight')
-    print('DATAFRAME PIVOTED!')
+    if dataframe is not None:
+        ### pivoting data
+        uv = pd.concat([dataframe.source,dataframe.target]).unique()
+        pivoted = dataframe.pivot(index='source', columns='target', values='weight')
+        print('- Dataframe pivoted.')
 
-    ### optimal:
-    pivoted = pivoted.sum(axis=0)
-    pivoted = pd.DataFrame(data=pivoted, index=uv.tolist(), columns=[0], copy=False)
-    ### not optimal:
-    #pivoted = pd.DataFrame(data=pivoted, index=uv.tolist(), columns=uv.tolist(), copy=False)
-    pivoted = pivoted.fillna(0.)
-    del(dataframe)
-    print('DATAFRAME CREATED!')
-    print(pivoted)
-    return csr_matrix(pivoted.as_matrix())
+        ### fullfilling target nodes that are not as source
+        pivoted = pd.DataFrame(data=pivoted, index=uv.tolist(), columns=uv.tolist(), copy=False)
+
+        ###
+        del(dataframe)
+        gc.collect()
+        print('- Dataframe succesfully created!')
+        pivoted = pivoted.fillna(0.)
+        return csr_matrix(pivoted.as_matrix())
+    return None
 
 ################################################################################
 ### main

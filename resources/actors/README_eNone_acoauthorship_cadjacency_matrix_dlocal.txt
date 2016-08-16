@@ -1,0 +1,13 @@
+===== SUMMARY OF EXECUTION =====
+OUTPUT: ../resources/actors
+NNODES: None
+NEDGES: None
+ISDIRECTED: False
+ISWEIGHTED: False
+ISMULTIGRAPH: True
+DEPENDENCY: local
+ALGORITHM: coauthorship
+CLASSTYPE: adjacency_matrix
+SHAPE: (4, 4)
+SUM DATA: 30.0
+RUNTIME: 0.539720058441 seconds

@@ -4,8 +4,8 @@ __author__ = 'espin'
 ################################################################################
 ### Local
 ################################################################################
+from org.gesis.libs import graph as c
 from org.gesis.libs.hypothesis import Hypothesis
-import gc
 
 ################################################################################
 ### Global Dependencies
@@ -14,10 +14,12 @@ import matplotlib
 #matplotlib.use("macosx")
 from matplotlib import pyplot as plt
 from scipy.special import gammaln
+from scipy.sparse import csr_matrix, lil_matrix
 import numpy as np
 import operator
 import os
 import pickle
+import gc
 
 ################################################################################
 ### CONSTANTS
@@ -51,8 +53,27 @@ class JANUS(object):
     ######################################################
     # 2. ADD HYPOTHESES
     ######################################################
-    def addHypothesis(self, hypothesis):
-        self.hypotheses.append(hypothesis)
+
+    def createHypothesis(self, name, belief=None):
+        if name == 'data':
+            Hypothesis(name,self.graph.dependency,self.output,self.graph.data).save()
+        elif name == 'uniform':
+            Hypothesis(name,self.graph.dependency,self.output,csr_matrix(self.graph.data.shape)).save()
+        elif name == 'selfloop':
+            Hypothesis(name,self.graph.dependency,self.output,self._selfloopBelief()).save()
+        else:
+            Hypothesis(name,self.graph.dependency,self.output,belief).save()
+        self.hypotheses.append(name)
+
+    def _selfloopBelief(self):
+        if self.graph.dependency == c.LOCAL:
+            tmp = lil_matrix(self.graph.data.shape)
+            tmp.setdiag(1.)
+            return tmp.tocsr()
+        nnodes = self.graph.nnodes
+        tmp = lil_matrix((nnodes,nnodes))
+        tmp.setdiag(1.)
+        return csr_matrix(tmp.toarray().flatten())
 
     ######################################################
     # 3. COMPUTE EVIDENCES
@@ -60,54 +81,19 @@ class JANUS(object):
     def generateEvidences(self,kmax,logscale):
         self._setWeightingFactors(kmax,logscale)
 
-        print('===== CALCULATING EVIDENCES =====')
+        print('\n===== CALCULATING EVIDENCES =====')
+        for hname in self.hypotheses:
+            print('\n::: Hypothesis: {} '.format(hname))
+            belief = Hypothesis(hname,self.graph.dependency,self.output)
+            belief.load()
+            self.evidences[hname] = {}
 
-        if len(self.hypotheses) == 0:
-            print('Hypotheses will be loaded one by one!')
             for k in self.weighting_factors:
-                k = float(k)
-
-                for f in os.listdir(self.output):
-                    if f.endswith(".matrix") and f.startswith('hypothesis'):
-                        fn = os.path.join(self.output,f)
-                        tmp = f.split('_')
-                        name = tmp[1]
-                        dependency = tmp[5][1:].split('.')[0]
-
-                        print('- {}: {}'.format(name,fn))
-                        beliefnorm = np.loadtxt(fn, delimiter=',')
-
-                        ### for the optimal case: 1xn
-                        if len(beliefnorm.shape) == 1:
-                            beliefnorm = beliefnorm.reshape(-1,1)
-
-                        print('k={}'.format(k))
-                        # print(beliefnorm)
-                        # print(beliefnorm.shape)
-
-                        prior = Hypothesis.elicit_prior_static(name,beliefnorm,k,copy=False)
-                        e = self._computeEvidence(prior)
-                        if name not in self.evidences:
-                            self.evidences[name] = {}
-                        self.evidences[name][k] = e
-                        print('k={} h={} done!'.format(k,name))
-                        del(beliefnorm)
-                        del(prior)
-                gc.collect()
-
-        else:
-            print('All hypotheses are loaded!')
-            for hypothesis in self.hypotheses:
-                print('>>> Hypothesis: {} <<<'.format(hypothesis.name))
-                self.evidences[hypothesis.name] = {}
-
-                for k in self.weighting_factors:
-                    k = float(k)
-                    prior = hypothesis.elicit_prior(k)
-                    e = self._computeEvidence(prior)
-                    self.evidences[hypothesis.name][k] = e
-                    print('k={} done!'.format(k))
-                    del(prior)
+                print('- k={}...'.format(k))
+                prior = belief.elicit_prior(k)
+                e = self.computeEvidence(prior)
+                self.evidences[hname][k] = e
+                del(prior)
             gc.collect()
 
     def _setWeightingFactors(self, max, logscale=False):
@@ -117,13 +103,12 @@ class JANUS(object):
         else:
             self.weighting_factors = range(0,max,1)
 
-    def _computeEvidence(self,prior):
+    def computeEvidence(self,prior):
         if not self.graph.isweighted and self.graph.ismultigraph:
             return self._categorical_dirichlet_evidence(prior)
         raise Exception('ERROR: We are sorry, this type of graph is not implemente yet (code:{})'.format(self.graph.classtype))
 
     def _categorical_dirichlet_evidence(self, prior):
-        print('Computing evidence...')
         evidence = 0
         evidence += gammaln(prior.sum(axis=1)).sum()
         evidence -= gammaln(self.graph.data.sum(axis=1) + prior.sum(axis=1)).sum()
@@ -156,7 +141,8 @@ class JANUS(object):
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
         handles, labels = ax.get_legend_handles_labels()
-        lgd = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5,-0.1))
+        #lgd = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5,-0.1))
+        lgd = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.28,0.50))
         ax.grid('on')
 
         plt.savefig(self.getFilePathName('evidences','pdf'), bbox_extra_artists=(lgd,), bbox_inches='tight')
@@ -193,23 +179,6 @@ class JANUS(object):
         s = '{}\n{}'.format(s,'\n'.join(['{0:25s}{1:<.3f}'.format(str(e[0]),float(e[1])) for e in sortedr]))
         print(s)
         self._writeFile('rank{}'.format(k),'txt',s)
-
-    def saveHypothesesToFile(self):
-        '''
-        Save to .matrix each hypothesis
-        :return:
-        '''
-        for h in self.hypotheses:
-            self.saveHypothesisToFile(h)
-
-    def saveHypothesisToFile(self, hypothesis):
-        fn = self.getFilePathName('hypothesis_{}'.format(hypothesis.name),'matrix')
-        if not os.path.exists(fn):
-            np.savetxt(fn, hypothesis.beliefnorm.toarray(), delimiter=',', fmt='%.3f')
-            print('FILE SAVED: {}'.format(fn))
-        else:
-            print('FILE ALREADY EXISTS: {}'.format(fn))
-        gc.collect()
 
     def saveEvidencesToFile(self):
         self._writeFile('evidences','p',self.evidences)

@@ -1,13 +1,13 @@
-# from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
 __author__ = 'espin'
 
 ################################################################################
 ### Local Dependencies
 ################################################################################
-from org.gesis.libs.janus import JANUS
-from org.gesis.libs.graph import Graph
-from org.gesis.libs.hypothesis import Hypothesis
 from org.gesis.libs import graph as c
+from org.gesis.libs.graph import GraphTool
+from org.gesis.libs.janus import JANUS
+from org.gesis.libs.hypothesis import Hypothesis
 from matplotlib import pyplot as plt
 
 ################################################################################
@@ -29,34 +29,34 @@ ALGORITHM = 'blockmodel'
 ### Functions
 ################################################################################
 
-def run_janus(nnodes,isdirected,isweighted,ismultigraph,selfloops,dependency,output,kmax,klogscale,krank):
+def run_janus(nnodes,algorithm,isdirected,isweighted,ismultigraph,selfloops,dependency,output,kmax,klogscale,krank):
+
     ### 1. create data
-    graph = Graph(isdirected, isweighted, ismultigraph, dependency, ALGORITHM, c.GRAPHTOOL, output)
-    g = graph.load() if graph.exists() else create_twocolor_graph(nnodes,isdirected,ismultigraph,selfloops)
-    graph.setData(g)
-    plot_blockmembership_dist(graph,g)
+    graph = GraphTool(isdirected, isweighted, ismultigraph, dependency, algorithm, output)
+    G = graph.loadGraph()
+    if G is None:
+        G = create_twocolor_graph(nnodes,isdirected,ismultigraph,selfloops)
+        graph.saveGraph(G)
+    graph.extractData(G)
+    graph.saveData()
+    graph.showInfo(G)
+    plot_blockmembership_dist(graph,G)
 
     ### 2. init JANUS
     start = time.time()
     janus = JANUS(graph, output)
 
     ### 3. create hypotheses
-    janus.addHypothesis(Hypothesis('data',janus.graph.data,dependency))
-    janus.addHypothesis(Hypothesis('uniform',csr_matrix(janus.graph.data.shape),dependency))
-    janus.addHypothesis(hyp_selfloops(dependency,graph))
-    janus.addHypothesis(hyp_assortativity(dependency,janus.graph,80,20))
-    janus.addHypothesis(hyp_assortativity(dependency,janus.graph,81,19))
-    janus.addHypothesis(hyp_assortativity(dependency,janus.graph,20,80))
-    janus.addHypothesis(hyp_assortativity(dependency,janus.graph,95,5))
-    janus.addHypothesis(hyp_assortativity(dependency,janus.graph,5,95))
-    janus.addHypothesis(hyp_noise(dependency,janus.graph,1,isdirected))
-    janus.addHypothesis(hyp_noise(dependency,janus.graph,3,isdirected))
-    janus.addHypothesis(hyp_noise(dependency,janus.graph,5,isdirected))
-    janus.addHypothesis(hyp_noise(dependency,janus.graph,10,isdirected))
-    janus.addHypothesis(hyp_noise(dependency,janus.graph,100,isdirected))
-    janus.saveHypothesesToFile()
+    janus.createHypothesis('data')
+    janus.createHypothesis('uniform')
+    janus.createHypothesis('selfloop')
+    janus.createHypothesis('assortativity8020',hyp_assortativity(janus.graph,80,20))
+    janus.createHypothesis('assortativity2080',hyp_assortativity(janus.graph,20,80))
+    janus.createHypothesis('noise10',hyp_noise(janus.graph,5))
+    janus.createHypothesis('noise10',hyp_noise(janus.graph,10))
+    janus.createHypothesis('noise10',hyp_noise(janus.graph,50))
 
-    ### 4. evidences
+    # ### 4. evidences
     janus.generateEvidences(kmax,klogscale)
     stop = time.time()
     janus.showRank(krank)
@@ -64,26 +64,13 @@ def run_janus(nnodes,isdirected,isweighted,ismultigraph,selfloops,dependency,out
     janus.plotEvidences()
     janus.saveReadme(start,stop)
 
-def hyp_noise(dependency, graph, noise, isdirected):
+def hyp_noise(graph, noise):
     tmp = graph.data.copy()
     e = np.random.randint(noise*-1, noise+1,(tmp.shape))
     e[np.where(e < 0)] = 0.
-    tmp = csr_matrix(tmp + e)
-    return Hypothesis('noise-{}'.format(noise),tmp,dependency)
+    return csr_matrix(tmp + e)
 
-def hyp_selfloops(dependency,graph):
-    if dependency == c.LOCAL:
-        tmp = lil_matrix(graph.data.shape)
-        tmp.setdiag(1.)
-        tmp = tmp.tocsr()
-    else:
-        nnodes = graph.nnodes
-        tmp = lil_matrix((nnodes,nnodes))
-        tmp.setdiag(1.)
-        tmp = csr_matrix(tmp.toarray().flatten())
-    return Hypothesis('selfloops',tmp,dependency)
-
-def hyp_assortativity(dependency,graph,value_eq,value_neq):
+def hyp_assortativity(graph,value_eq,value_neq):
     bm = graph._args['blocks']
     tmp = lil_matrix(graph.data.shape)
     nnodes = graph.nnodes
@@ -96,17 +83,14 @@ def hyp_assortativity(dependency,graph,value_eq,value_neq):
                 ### target is an index (from a matrix 1xnnodes)
                 row = int(target / nnodes)
                 col = target - (nnodes * row)
-
                 rt = col
                 ct = row
                 newtarget = ct + (rt * nnodes)
-
                 sourcenode = row
                 targetnode = col
             else:
                 sourcenode = source
                 targetnode = target
-
 
             value = value_eq if bm[sourcenode] == bm[targetnode] else value_neq
             tmp[source,target] = value
@@ -118,39 +102,40 @@ def hyp_assortativity(dependency,graph,value_eq,value_neq):
                 tmp[source,newtarget] = value
 
     tmp.setdiag(0.)
-    tmp = tmp.tocsr()
-    return Hypothesis('assortativity(ho{},he{})'.format(value_eq,value_neq),tmp,dependency)
+    return tmp.tocsr()
 
 def plot_blockmembership_dist(graph,G):
-    data = {}
-    title = 'Blockmembership Histogram'
-    n = float(G.num_edges())
-    for edge in G.edges():
-        s = G.vp.blocks[edge.source()]
-        t = G.vp.blocks[edge.target()]
-        ### block membership
-        k = '{}-{}'.format(s,t)
-        if k not in data:
-            data[k] = 0
-        data[k] += 1 / n
-        ### selfloops
-        if edge.source() == edge.target():
-            k = 'selfloop'
+    fn = graph.getFileNamePlot('blockmembership')
+    if not os.path.exists(fn):
+        data = {}
+        title = 'Blockmembership Histogram'
+        n = float(G.num_edges())
+        for edge in G.edges():
+            s = G.vp.blocks[edge.source()]
+            t = G.vp.blocks[edge.target()]
+            ### block membership
+            k = '{}-{}'.format(s,t)
             if k not in data:
                 data[k] = 0
             data[k] += 1 / n
-    xx = range(len(data.keys()))
-    yy = data.values()
-    plt.bar(xx,yy)
-    plt.xticks(xx, data.keys())
-    plt.margins(0.1)
-    plt.subplots_adjust(bottom=0.1)
-    plt.title(title)
-    plt.ylabel("counts")
-    plt.xlabel("membership")
-    plt.savefig(graph.getFilePathName('blockmembershipdist','pdf'))
-    plt.close()
-    print('PLOT BLOCK MEMBERSHIP DISTRIBUTION DONE!')
+            ### selfloops
+            if edge.source() == edge.target():
+                k = 'selfloop'
+                if k not in data:
+                    data[k] = 0
+                data[k] += 1 / n
+        xx = range(len(data.keys()))
+        yy = data.values()
+        plt.bar(xx,yy)
+        plt.xticks(xx, data.keys())
+        plt.margins(0.1)
+        plt.subplots_adjust(bottom=0.1)
+        plt.title(title)
+        plt.ylabel("counts")
+        plt.xlabel("membership")
+        plt.savefig(fn)
+        plt.close()
+        print('- plot block membership done!')
 
 ################################################################################
 ### Data Specific: Blockmodel
@@ -189,13 +174,14 @@ if __name__ == '__main__':
     isweighted = False
     ismultigraph = True
     selfloops = True
-    dependency = c.LOCAL
+    dependency = c.GLOBAL
     kmax = 5
     klogscale = True
     krank = 100000
-    output = '../resources/blockmodel_nodes-{}_directed-{}_weighted-{}_multigraph-{}_selfloops-{}_dependency-{}'.format(nnodes,isdirected,isweighted,ismultigraph,selfloops,dependency)
+    algorithm = ALGORITHM
+    output = '../resources/{}_nodes-{}_directed-{}_weighted-{}_multigraph-{}_selfloops-{}_dependency-{}'.format(algorithm,nnodes,isdirected,isweighted,ismultigraph,selfloops,dependency)
 
     if not os.path.exists(output):
         os.makedirs(output)
 
-    run_janus(nnodes,isdirected,isweighted,ismultigraph,selfloops,dependency,output,kmax,klogscale,krank)
+    run_janus(nnodes,algorithm,isdirected,isweighted,ismultigraph,selfloops,dependency,output,kmax,klogscale,krank)
