@@ -290,19 +290,9 @@ class DataframePandas(Graph):
     # SET DATA GRAPH
     ######################################################
     def extractData(self, dataframe):
-        uv = pd.concat([dataframe.source,dataframe.target]).unique()
-        pivoted = dataframe.pivot(index='source', columns='target', values='weight')
-        print('- Dataframe pivoted.')
-
-        ### fullfilling target nodes that are not as source
-        indexes = uv.tolist()
-        pivoted = pd.DataFrame(data=pivoted, index=indexes, columns=indexes, copy=False)
-        pivoted = pivoted.fillna(0.)
-        print('- Dataframe nxn.')
-
-        self.data = csr_matrix(pivoted.as_matrix())
-        self.nnodes = len(indexes)
-        self.nedges = pivoted.sum()
+        self.data = csr_matrix(dataframe.as_matrix())
+        self.nnodes = dataframe.shape[0]
+        self.nedges = int(dataframe.sum().sum())
         super(DataframePandas, self).extractData()
 
     def saveGraph(self, G):

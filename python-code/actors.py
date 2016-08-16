@@ -29,7 +29,7 @@ DEL=','
 ### Functions
 ################################################################################
 
-def run_janus(nnodes,algorithm,isdirected,isweighted,ismultigraph,selfloops,dependency,output,kmax,klogscale,krank):
+def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank):
 
     ### 1. create data
     graph = DataMatrix(isdirected, isweighted, ismultigraph, dependency, algorithm, output)
@@ -73,19 +73,17 @@ def getMatrix(datasets,output):
 ### main
 ################################################################################
 if __name__ == '__main__':
-    nnodes = 100
     isdirected = False
     isweighted = False
     ismultigraph = True
-    selfloops = True
-    dependency = c.LOCAL
+    dependency = c.GLOBAL
     kmax = 3
     klogscale = True
     krank = 1000
     algorithm = ALGORITHM
-    output = '../resources/actors'
+    output = '../resources/actors-{}'.format(dependency)
 
     if not os.path.exists(output):
         os.makedirs(output)
 
-    run_janus(nnodes,algorithm,isdirected,isweighted,ismultigraph,selfloops,dependency,output,kmax,klogscale,krank)
+    run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank)

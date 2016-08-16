@@ -1,125 +1,105 @@
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
 __author__ = 'espin'
 
 ################################################################################
 ### Local Dependencies
 ################################################################################
-from org.gesis.libs.janus import JANUS
-from org.gesis.libs.graph import Graph
-from org.gesis.libs.hypothesis import Hypothesis
 from org.gesis.libs import graph as c
+from org.gesis.libs.graph import DataframePandas
+from org.gesis.libs.janus import JANUS
 
 ################################################################################
 ### Global Dependencies
 ################################################################################
 from scipy.sparse import csr_matrix, lil_matrix
+import os
 import time
 import pandas as pd
-import os
-import gc
+
 
 ################################################################################
 ### CONSTANTS
 ################################################################################
-ALGORITHM = 'retweetnet'
+ALGORITHM = 'retweets'
 FN = {'retweet':'higgs-retweet_network.edgelist', 'mention':'higgs-mention_network.edgelist', 'reply':'higgs-reply_network.edgelist', 'social':'higgs-social_network.edgelist'}
+DEL=','
 
 ################################################################################
 ### Functions
 ################################################################################
 
-def run_janus(isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank):
+def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank):
+
     ### 1. create data
-    graph = Graph(isdirected, isweighted, ismultigraph, dependency, ALGORITHM, c.ADJACENCY, output)
-    g = graph.load() if graph.exists() else loadMatrix(['retweet'],output)
-    graph.setData(g)
+    graph = DataframePandas(isdirected, isweighted, ismultigraph, dependency, algorithm, output)
+    graph.extractData(getDataframe(['retweet'],output))
+    graph.showInfo()
 
     ### 2. init JANUS
     start = time.time()
     janus = JANUS(graph, output)
 
     ### 3. create hypotheses
-    janus.saveHypothesisToFile(Hypothesis('data',janus.graph.data,dependency))
-    janus.saveHypothesisToFile(Hypothesis('uniform',csr_matrix(janus.graph.data.shape),dependency))
-    janus.saveHypothesisToFile(hyp_selfloops(dependency,graph))
+    janus.createHypothesis('data')
+    janus.createHypothesis('uniform')
+    janus.createHypothesis('selfloop')
+    janus.createHypothesis('mention',csr_matrix(getDataframe(['mention'],output).as_matrix()))
+    janus.createHypothesis('reply',csr_matrix(getDataframe(['reply'],output).as_matrix()))
+    janus.createHypothesis('social',csr_matrix(getDataframe(['social'],output).as_matrix()))
 
-    janus.saveHypothesisToFile(Hypothesis('replies',loadMatrix(['reply'],output),dependency))
-    janus.saveHypothesisToFile(Hypothesis('social',loadMatrix(['social'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('replies',loadMatrix(['replie'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('mentions',loadMatrix(['mention'],output),dependency))
-    janus.saveHypothesisToFile(Hypothesis('social-replies-mentions',loadMatrix(['social','reply','mention'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('social_mentions',loadMatrix(['social','mention'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('social_replies',loadMatrix(['social','reply'],output),dependency))
-    # janus.saveHypothesisToFile(Hypothesis('mentions_replies',loadMatrix(['mention','reply'],output),dependency))
-
-    ### 4. evidences
+    # ### 4. evidences
     janus.generateEvidences(kmax,klogscale)
     stop = time.time()
     janus.showRank(krank)
     janus.saveEvidencesToFile()
-    janus.plotEvidences()
+    janus.plotEvidences(krank)
     janus.saveReadme(start,stop)
 
-def hyp_selfloops(dependency,graph):
-    if dependency == c.LOCAL:
-        tmp = lil_matrix(graph.data.shape)
-        tmp.setdiag(1.)
-        tmp = tmp.tocsr()
-    else:
-        nnodes = graph.nnodes
-        tmp = lil_matrix((nnodes,nnodes))
-        tmp.setdiag(1.)
-        tmp = csr_matrix(tmp.toarray().flatten())
-    return Hypothesis('selfloops',tmp,dependency)
-
-################################################################################
-### Data Specific:
-################################################################################
-def loadMatrix(datasets,path):
-
-    dataframe = None
+def getDataframe(datasets,output,asmatrix=False):
+    data = None
     for dataset in datasets:
-        fn = os.path.join(path,FN[dataset])
+        fn = os.path.join(output,FN[dataset])
+        names = ["source", "target", "weight"] if dataset != 'social' else ["source", "target"]
+        if data is None:
+            dataframe = pd.read_csv(fn, sep=" ", header = None, names=names)
+            if dataset == 'social':
+                dataframe.loc[:,'weight'] = pd.Series([1 for x in range(len(dataframe['source']))], index=dataframe.index)
+        else:
+            tmp = pd.read_csv(fn, sep=" ", header = None, names=names)
+            if tmp == 'social':
+                tmp.loc[:,'weight'] = pd.Series([1 for x in range(len(tmp['source']))], index=tmp.index)
+            dataframe.add(tmp, fill_value=0.)
 
-        ### if it doesnt exist as a hypothesis
-        if sum([1 for f in os.listdir(path) if f.startswith('hypothesis') and dataset in f and f.endswith('.matrix')]) <= 0:
-            if dataframe is None:
-                dataframe = pd.read_csv(fn, sep=" ", header = None, names=["source", "target", "weight"])
-            else:
-                dataframe.add(pd.read_csv(fn, sep=" ", header = None, names=["source", "target", "weight"]), fill_value=0.)
-            print('- Dataframe added: {}'.format(fn))
+    return getMatrix(dataframe)
 
-    if dataframe is not None:
-        ### pivoting data
-        uv = pd.concat([dataframe.source,dataframe.target]).unique()
-        pivoted = dataframe.pivot(index='source', columns='target', values='weight')
-        print('- Dataframe pivoted.')
+def getMatrix(dataframe):
+    uv = pd.concat([dataframe.source,dataframe.target]).unique()
+    pivoted = dataframe.pivot(index='source', columns='target', values='weight')
+    print('- Dataframe pivoted.')
 
-        ### fullfilling target nodes that are not as source
-        pivoted = pd.DataFrame(data=pivoted, index=uv.tolist(), columns=uv.tolist(), copy=False)
+    ### fullfilling target nodes that are not as source
+    indexes = uv.tolist()
+    pivoted = pd.DataFrame(data=pivoted, index=indexes, columns=indexes, copy=False)
+    pivoted = pivoted.fillna(0.)
+    print('- Dataframe nxn.')
+    return pivoted
 
-        ###
-        del(dataframe)
-        gc.collect()
-        print('- Dataframe succesfully created!')
-        pivoted = pivoted.fillna(0.)
-        return csr_matrix(pivoted.as_matrix())
-    return None
 
 ################################################################################
 ### main
 ################################################################################
 if __name__ == '__main__':
-    isdirected = False
+    isdirected = True
     isweighted = False
     ismultigraph = True
     dependency = c.LOCAL
-    kmax = 5
+    kmax = 3
     klogscale = True
-    krank = 100000
-    output = '../resources/twitter'
+    krank = 1000
+    algorithm = ALGORITHM
+    output = '../resources/twitter-{}'.format(dependency)
 
     if not os.path.exists(output):
         os.makedirs(output)
 
-    run_janus(isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank)
+    run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank)
