@@ -1,9 +1,0 @@
-Data generated as coauthorship
-===== RANK k=100000 =====
-data                     -10.787
-nominations              -16.042
-uniform                  -41.588
-first_movie              -51.597
-same-country             -59.492
-transitivity             -261.552
-selfloop                 -356.768

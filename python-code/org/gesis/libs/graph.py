@@ -115,9 +115,6 @@ class Graph(object):
     def loadGraph(self):
         return
 
-    def setData(self, data):
-        self.data = data
-
     ######################################################
     # PLOTS
     ######################################################
@@ -325,3 +322,43 @@ class DataframePandas(Graph):
 
     def plotWeightDistribution(self, G):
         return
+
+#########################################################################################################
+### Adjacency Matrix sparse matrix
+#########################################################################################################
+class DataMatrix(Graph):
+
+    ######################################################
+    # INITIALIZATION
+    ######################################################
+    def __init__(self,isdirected,isweighted,ismultigraph,dependency,algorithm,output):
+        super(DataMatrix, self).__init__(isdirected,isweighted,ismultigraph,dependency,algorithm,ADJACENCY,output)
+
+    ######################################################
+    # SET DATA GRAPH
+    ######################################################
+    def extractData(self, matrix):
+        self.data = matrix
+        self.nnodes = matrix.shape[1]
+        self.nedges = int(matrix.sum())
+        super(DataMatrix, self).extractData()
+
+    def saveGraph(self, G):
+        return
+
+    def loadGraph(self):
+        return
+
+    ######################################################
+    # PLOTTING
+    ######################################################
+    def plotGraph(self, G):
+        return
+
+    def plotDegreeDistribution(self, G):
+        return
+
+    def plotWeightDistribution(self, G):
+        return
+
+

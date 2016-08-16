@@ -5,7 +5,7 @@ __author__ = 'espin'
 ### Local Dependencies
 ################################################################################
 from org.gesis.libs import graph as c
-from org.gesis.libs.graph import Graph
+from org.gesis.libs.graph import DataMatrix
 from org.gesis.libs.janus import JANUS
 from org.gesis.libs.hypothesis import Hypothesis
 from matplotlib import pyplot as plt
@@ -32,9 +32,8 @@ DEL=','
 def run_janus(nnodes,algorithm,isdirected,isweighted,ismultigraph,selfloops,dependency,output,kmax,klogscale,krank):
 
     ### 1. create data
-    graph = Graph(isdirected, isweighted, ismultigraph, dependency, algorithm, c.ADJACENCY, output)
-    graph.setData(getMatrix(['data'],output))
-    graph.extractData()
+    graph = DataMatrix(isdirected, isweighted, ismultigraph, dependency, algorithm, output)
+    graph.extractData(getMatrix(['data'],output))
     graph.showInfo()
 
     ### 2. init JANUS
