@@ -7,14 +7,10 @@ __author__ = 'espin'
 from org.gesis.libs import graph as c
 from org.gesis.libs.graph import DataMatrix
 from org.gesis.libs.janus import JANUS
-from org.gesis.libs.hypothesis import Hypothesis
-from matplotlib import pyplot as plt
 
 ################################################################################
 ### Global Dependencies
 ################################################################################
-import graph_tool.all as gt
-from numpy.random import randint, uniform
 from scipy.sparse import csr_matrix, lil_matrix
 import numpy as np
 import os

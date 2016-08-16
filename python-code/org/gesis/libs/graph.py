@@ -12,7 +12,7 @@ from scipy.sparse import csr_matrix, lil_matrix
 import os
 import graph_tool.all as gt
 import numpy as np
-import pandas as pd
+
 
 #########################################################################################################
 ### CONSTANTS
@@ -291,6 +291,7 @@ class DataframePandas(Graph):
     ######################################################
     def extractData(self, dataframe):
         self.data = csr_matrix(dataframe.as_matrix())
+        self._args['indexes'] = dataframe.columns
         self.nnodes = dataframe.shape[0]
         self.nedges = int(dataframe.sum().sum())
         super(DataframePandas, self).extractData()

@@ -20,7 +20,6 @@ import operator
 import os
 import pickle
 import gc
-import collections
 
 ################################################################################
 ### CONSTANTS

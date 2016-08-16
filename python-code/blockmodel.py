@@ -7,7 +7,6 @@ __author__ = 'espin'
 from org.gesis.libs import graph as c
 from org.gesis.libs.graph import GraphTool
 from org.gesis.libs.janus import JANUS
-from org.gesis.libs.hypothesis import Hypothesis
 from matplotlib import pyplot as plt
 
 ################################################################################
