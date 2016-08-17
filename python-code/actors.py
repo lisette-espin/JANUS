@@ -29,7 +29,11 @@ def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kma
 
     ### 1. create data
     graph = DataMatrix(isdirected, isweighted, ismultigraph, dependency, algorithm, output)
-    graph.extractData(getMatrix(['data'],output))
+    if graph.exists():
+        graph.loadData()
+    else:
+        graph.extractData(getMatrix(['data'],output))
+        graph.saveData()
     graph.showInfo()
 
     ### 2. init JANUS
@@ -72,7 +76,7 @@ if __name__ == '__main__':
     isdirected = False
     isweighted = False
     ismultigraph = True
-    dependency = c.GLOBAL
+    dependency = c.LOCAL
     kmax = 3
     klogscale = True
     krank = 1000

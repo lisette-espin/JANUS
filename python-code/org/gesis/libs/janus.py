@@ -54,15 +54,20 @@ class JANUS(object):
     # 2. ADD HYPOTHESES
     ######################################################
 
-    def createHypothesis(self, name, belief=None):
-        if name == 'data':
-            Hypothesis(name,self.graph.dependency,self.output,self.graph.data).save()
-        elif name == 'uniform':
-            Hypothesis(name,self.graph.dependency,self.output,csr_matrix(self.graph.data.shape)).save()
-        elif name == 'selfloop':
-            Hypothesis(name,self.graph.dependency,self.output,self._selfloopBelief()).save()
-        else:
-            Hypothesis(name,self.graph.dependency,self.output,belief).save()
+    def createHypothesis(self, name, belief=None, copy=False):
+        h = Hypothesis(name,self.graph.dependency,self.output,None)
+
+        if not h.exists():
+            if name == 'data':
+                h.setBelief(self.graph.data,True)
+            elif name == 'uniform':
+                h.setBelief(csr_matrix(self.graph.data.shape),copy)
+            elif name == 'selfloop':
+                h.setBelief(self._selfloopBelief(),copy)
+            else:
+                h.setBelief(belief,copy)
+            h.save()
+        del(h)
         self.hypotheses.append(name)
 
     def _selfloopBelief(self):
@@ -85,11 +90,11 @@ class JANUS(object):
         for hname in self.hypotheses:
             print('\n::: Hypothesis: {} '.format(hname))
             belief = Hypothesis(hname,self.graph.dependency,self.output)
-            belief.load()
             self.evidences[hname] = {}
 
             for k in self.weighting_factors:
-                prior = belief.elicit_prior(k)
+                belief.load()
+                prior = belief.elicit_prior(k,False)
                 e = self.computeEvidence(prior)
                 self.evidences[hname][k] = e
                 print('- k={}: {}'.format(k,e))

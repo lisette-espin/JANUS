@@ -11,6 +11,7 @@ from org.gesis.libs import graph as c
 ################################################################################
 from sklearn.preprocessing import normalize
 from scipy.sparse import csr_matrix, lil_matrix
+from scipy import io
 import numpy as np
 import os
 
@@ -18,6 +19,7 @@ import os
 ### Constantes
 ################################################################################
 DEL = ','
+EXT = 'mtx'
 
 ################################################################################
 ### Class Hypothesis
@@ -79,22 +81,27 @@ class Hypothesis(object):
             self.beliefnorm = normalize(belief, axis=1, norm='l1', copy=copy)
 
     def getFileName(self):
-        fn = 'hypothesis_{}_d{}.matrix'.format(self.name, self.dependency)
+        fn = 'hypothesis_{}_d{}.{}'.format(self.name, self.dependency,EXT)
         return os.path.join(self.outout, fn)
 
     def save(self):
         if self.beliefnorm is not None:
             fn = self.getFileName()
             if not os.path.exists(fn):
-                np.savetxt(fn, self.beliefnorm.toarray(), delimiter=DEL, fmt='%.6f')
+                #np.savetxt(fn, self.beliefnorm.toarray(), delimiter=DEL, fmt='%.6f')
+                io.mmwrite(fn, self.beliefnorm)
                 print('HYPOTHESIS SAVED: {}'.format(fn))
 
     def load(self):
         fn = self.getFileName()
         if os.path.exists(fn):
-            self.beliefnorm = csr_matrix(np.loadtxt(fn, delimiter=DEL))
+            # self.beliefnorm = csr_matrix(np.loadtxt(fn, delimiter=DEL))
+            self.beliefnorm = io.mmread(fn)
             self.nnodes = self.beliefnorm.shape[1]
             print('- hypothesis {} loaded: {}'.format(self.beliefnorm.shape,self.name))
 
+    def exists(self):
+        return os.path.exists(self.getFileName())
 
-
+    def setBelief(self, belief, copy=True):
+        self._normalize(belief, copy)

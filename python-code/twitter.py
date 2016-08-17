@@ -17,6 +17,7 @@ import time
 import pandas as pd
 # import dask.dataframe as dd
 # from distributed import Executor
+import pickle
 
 ################################################################################
 ### CONSTANTS
@@ -24,6 +25,8 @@ import pandas as pd
 ALGORITHM = 'retweets'
 FN = {'retweet':'higgs-retweet_network.edgelist', 'mention':'higgs-mention_network.edgelist', 'reply':'higgs-reply_network.edgelist', 'social':'higgs-social_network.edgelist'}
 DEL=','
+NNODES = 38918
+#NNODES = 5
 
 ################################################################################
 ### Functions
@@ -31,13 +34,18 @@ DEL=','
 
 def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank):
 
-    ### 0. pre-process
-    data,nodeids = preprocessData(['reply'],output)
-
     ### 1. create data
     graph = DataMatrix(isdirected, isweighted, ismultigraph, dependency, algorithm, output)
-    graph.extractData(data)
-    graph.showInfo()
+
+    if not graph.exists():
+        data,nodeids = preprocessData(['reply'],output)
+        graph.extractData(data)
+        graph.saveData()
+        writeNodeIds(nodeids,output)
+    else:
+        graph.loadData()
+        graph.showInfo()
+        nodeids = readNodeIds(output)
 
     ### 2. init JANUS
     start = time.time()
@@ -61,7 +69,7 @@ def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kma
 
 def preprocessData(datasets,output):
     nodeids = []
-    data = lil_matrix((38918,38918))
+    data = lil_matrix((NNODES,NNODES))
     ### read replies
     df = getDataFrame(datasets,output)
     for row in df.itertuples():
@@ -77,7 +85,7 @@ def preprocessData(datasets,output):
     return data.tocsr(), nodeids
 
 def loadAdjacency(datasets,nodeids,isdirected,output):
-    data = lil_matrix((38918,38918))
+    data = lil_matrix((NNODES,NNODES))
     df = getDataFrame(datasets,output)
     for row in df.itertuples():
         source = row[1]
@@ -107,6 +115,15 @@ def getDataFrame(datasets,output):
     print('- dataframes loaded: {}'.format(datasets))
     return dataframe
 
+def readNodeIds(output):
+    fn = os.path.join(output,'nodeids.p')
+    with open(fn,'r') as f:
+        pickle.load(f)
+
+def writeNodeIds(obj,output):
+    fn = os.path.join(output,'nodeids.p')
+    with open(fn,'wb') as f:
+        pickle.dump(obj,f)
 
 ################################################################################
 ### main

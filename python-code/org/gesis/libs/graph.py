@@ -12,7 +12,7 @@ from scipy.sparse import csr_matrix, lil_matrix
 import os
 import graph_tool.all as gt
 import numpy as np
-
+from scipy import io
 
 #########################################################################################################
 ### CONSTANTS
@@ -97,15 +97,21 @@ class Graph(object):
         self.saveData()
         del(G)
 
+    def exists(self):
+        fn = self.getFileNameAdjacency()
+        return self.fileExists(fn)
+
     def loadData(self):
         fn = self.getFileNameAdjacency()
-        self.data = csr_matrix(np.loadtxt(fn, delimiter=DEL))
+        #self.data = csr_matrix(np.loadtxt(fn, delimiter=DEL))
+        self.data = io.mmread(fn)
         print('- data loaded')
 
     def saveData(self):
         fn = self.getFileNameAdjacency()
         if not self.fileExists(fn):
-            np.savetxt(fn, self.data.toarray(), delimiter=DEL, fmt='%.6f')
+            #np.savetxt(fn, self.data.toarray(), delimiter=DEL, fmt='%.6f')
+            io.mmwrite(fn, self.data)
             print('- data (adjacency matrix) saved')
 
     def saveGraph(self):
