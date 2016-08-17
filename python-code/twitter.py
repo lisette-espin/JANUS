@@ -11,7 +11,7 @@ from org.gesis.libs.janus import JANUS
 ################################################################################
 ### Global Dependencies
 ################################################################################
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_matrix
 import os
 import time
 import pandas as pd
@@ -22,23 +22,23 @@ import pickle
 ################################################################################
 ### CONSTANTS
 ################################################################################
-ALGORITHM = 'retweets'
+ALGORITHM = 'twitter'
 FN = {'retweet':'higgs-retweet_network.edgelist', 'mention':'higgs-mention_network.edgelist', 'reply':'higgs-reply_network.edgelist', 'social':'higgs-social_network.edgelist'}
 DEL=','
 NNODES = 38918
-#NNODES = 5
+# NNODES = 5
 
 ################################################################################
 ### Functions
 ################################################################################
 
-def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank):
+def run_janus(datasource,algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank):
 
     ### 1. create data
     graph = DataMatrix(isdirected, isweighted, ismultigraph, dependency, algorithm, output)
 
     if not graph.exists():
-        data,nodeids = preprocessData(['reply'],output)
+        data,nodeids = preprocessData([datasource],output)
         graph.extractData(data)
         graph.saveData()
         writeNodeIds(nodeids,output)
@@ -55,9 +55,9 @@ def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kma
     janus.createHypothesis('data')
     janus.createHypothesis('uniform')
     janus.createHypothesis('selfloop')
-    janus.createHypothesis('mention',loadAdjacency(['mention'],nodeids,isdirected,output))
-    janus.createHypothesis('retweet',loadAdjacency(['retweet'],nodeids,isdirected,output))
-    janus.createHypothesis('social',loadAdjacency(['social'],nodeids,isdirected,output))
+    janus.createHypothesis('mention',loadAdjacency('mention',['mention'],nodeids,isdirected,output))
+    janus.createHypothesis('retweet',loadAdjacency('retweet',['retweet'],nodeids,isdirected,output))
+    janus.createHypothesis('social',loadAdjacency('social',['social'],nodeids,isdirected,output))
 
     # ### 4. evidences
     janus.generateEvidences(kmax,klogscale)
@@ -69,7 +69,7 @@ def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kma
 
 def preprocessData(datasets,output):
     nodeids = []
-    data = lil_matrix((NNODES,NNODES))
+    data = csr_matrix((NNODES,NNODES))
     ### read replies
     df = getDataFrame(datasets,output)
     for row in df.itertuples():
@@ -82,21 +82,23 @@ def preprocessData(datasets,output):
             nodeids.append(target)
         data[nodeids.index(source),nodeids.index(target)] = weight
     print('- data pre-proccessed!')
-    return data.tocsr(), nodeids
+    return data, nodeids
 
-def loadAdjacency(datasets,nodeids,isdirected,output):
-    data = lil_matrix((NNODES,NNODES))
-    df = getDataFrame(datasets,output)
-    for row in df.itertuples():
-        source = row[1]
-        target = row[2]
-        weight = row[3]
-        if source in nodeids and target in nodeids:
-            data[nodeids.index(source),nodeids.index(target)] = weight
-            if not isdirected:
-                data[nodeids.index(target),nodeids.index(source)] = weight
-    print('- adjacency pre-proccessed!')
-    return data.tocsr()
+def loadAdjacency(hname,datasets,nodeids,isdirected,output):
+    if not hypothesisExists(hname):
+        data = csr_matrix((NNODES,NNODES))
+        df = getDataFrame(datasets,output)
+        for row in df.itertuples():
+            source = row[1]
+            target = row[2]
+            weight = row[3]
+            if source in nodeids and target in nodeids:
+                data[nodeids.index(source),nodeids.index(target)] = weight
+                if not isdirected:
+                    data[nodeids.index(target),nodeids.index(source)] = weight
+        print('- adjacency pre-proccessed!')
+        return data
+    return None
 
 def getDataFrame(datasets,output):
     dataframe = None
@@ -112,7 +114,7 @@ def getDataFrame(datasets,output):
             if tmp == 'social':
                 tmp.loc[:,'weight'] = pd.Series([1 for x in range(len(tmp['source']))], index=tmp.index)
             dataframe.add(tmp, fill_value=0.)
-    print('- dataframes loaded: {}'.format(datasets))
+    print('- edges loaded: {}'.format(datasets))
     return dataframe
 
 def readNodeIds(output):
@@ -124,6 +126,9 @@ def writeNodeIds(obj,output):
     fn = os.path.join(output,'nodeids.p')
     with open(fn,'wb') as f:
         pickle.dump(obj,f)
+
+def hypothesisExists(hname):
+    return len([1 for fn in os.listdir(output) if fn.startswith('hypothesis_{}_'.format(hname)) and fn.endswith('.mtx')]) == 1
 
 ################################################################################
 ### main
@@ -137,9 +142,10 @@ if __name__ == '__main__':
     klogscale = True
     krank = 1000
     algorithm = ALGORITHM
-    output = '../resources/twitter-{}'.format(dependency)
+    datasource = 'reply'
+    output = '../resources/twitter-{}-{}'.format(datasource,dependency)
 
     if not os.path.exists(output):
         os.makedirs(output)
 
-    run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank)
+    run_janus(datasource,algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank)

@@ -11,7 +11,7 @@ from org.gesis.libs.janus import JANUS
 ################################################################################
 ### Global Dependencies
 ################################################################################
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_matrix
 import numpy as np
 import os
 import time
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     isdirected = False
     isweighted = False
     ismultigraph = True
-    dependency = c.LOCAL
+    dependency = c.GLOBAL
     kmax = 3
     klogscale = True
     krank = 1000

@@ -10,7 +10,7 @@ from org.gesis.libs import graph as c
 ### Global Dependencies
 ################################################################################
 from sklearn.preprocessing import normalize
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_matrix
 from scipy import io
 import numpy as np
 import os
@@ -49,26 +49,19 @@ class Hypothesis(object):
     # ELICITING PRIOR
     ######################################################
     def elicit_prior(self, k, copy=True):
-        proto = 1.0
         kappa =  self.nnodes * k
-
         if k in [0.,0.1] or self.beliefnorm.size == 0:
-            prior = lil_matrix(self.beliefnorm.shape, dtype=np.float64)
-            prior[:] = proto + k
+            prior = csr_matrix(self.beliefnorm.shape, dtype=np.float64)
         else:
-            self.beliefnorm = lil_matrix(self.beliefnorm)
-
             if copy:
                 prior = self.beliefnorm.copy() * kappa
             else:
                 prior = self.beliefnorm * kappa
-
             ### rows only 0 --> k
             norma = prior.sum(axis=1)
             n_zeros,_ = np.where(norma == 0)
             prior[n_zeros,:] = k
-
-        return csr_matrix(prior)
+        return prior
 
 
     ######################################################
@@ -88,15 +81,13 @@ class Hypothesis(object):
         if self.beliefnorm is not None:
             fn = self.getFileName()
             if not os.path.exists(fn):
-                #np.savetxt(fn, self.beliefnorm.toarray(), delimiter=DEL, fmt='%.6f')
                 io.mmwrite(fn, self.beliefnorm)
                 print('HYPOTHESIS SAVED: {}'.format(fn))
 
     def load(self):
         fn = self.getFileName()
         if os.path.exists(fn):
-            # self.beliefnorm = csr_matrix(np.loadtxt(fn, delimiter=DEL))
-            self.beliefnorm = io.mmread(fn)
+            self.beliefnorm = csr_matrix(io.mmread(fn))
             self.nnodes = self.beliefnorm.shape[1]
             print('- hypothesis {} loaded: {}'.format(self.beliefnorm.shape,self.name))
 

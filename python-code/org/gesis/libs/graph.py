@@ -24,6 +24,7 @@ DATAFRAME = 'dataframe'
 LOCAL = 'local'
 GLOBAL = 'global'
 DEL = ','
+EXT = 'mtx'
 
 #########################################################################################################
 ### Main Class: JANUS
@@ -63,7 +64,7 @@ class Graph(object):
         return os.path.join(self.output,fn)
 
     def getFileNameAdjacency(self):
-        fn = 'data_a{}_c{}.matrix'.format(self.algorithm,self.classtype)
+        fn = 'data_a{}_c{}.{}'.format(self.algorithm,self.classtype,EXT)
         return os.path.join(self.output,fn)
 
     ######################################################
@@ -103,14 +104,14 @@ class Graph(object):
 
     def loadData(self):
         fn = self.getFileNameAdjacency()
-        #self.data = csr_matrix(np.loadtxt(fn, delimiter=DEL))
-        self.data = io.mmread(fn)
+        self.data = csr_matrix(io.mmread(fn))
+        self.nnodes = self.data.shape[1]
+        self.nedges = int(self.data.sum())
         print('- data loaded')
 
     def saveData(self):
         fn = self.getFileNameAdjacency()
         if not self.fileExists(fn):
-            #np.savetxt(fn, self.data.toarray(), delimiter=DEL, fmt='%.6f')
             io.mmwrite(fn, self.data)
             print('- data (adjacency matrix) saved')
 

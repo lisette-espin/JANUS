@@ -95,7 +95,7 @@ class JANUS(object):
             for k in self.weighting_factors:
                 belief.load()
                 prior = belief.elicit_prior(k,False)
-                e = self.computeEvidence(prior)
+                e = self.computeEvidence(prior, k)
                 self.evidences[hname][k] = e
                 print('- k={}: {}'.format(k,e))
                 del(prior)
@@ -108,17 +108,21 @@ class JANUS(object):
         else:
             self.weighting_factors = range(0,max,1)
 
-    def computeEvidence(self,prior):
+    def computeEvidence(self,prior,k):
         if not self.graph.isweighted and self.graph.ismultigraph:
-            return self._categorical_dirichlet_evidence(prior)
+            return self._categorical_dirichlet_evidence(prior,k)
         raise Exception('ERROR: We are sorry, this type of graph is not implemente yet (code:{})'.format(self.graph.classtype))
 
-    def _categorical_dirichlet_evidence(self, prior):
+    def _categorical_dirichlet_evidence(self, prior,k):
+        protoprior = 1.0 + (k if prior.size == 0 else 0.)
+        uniform = self.graph.nnodes * protoprior
         evidence = 0
-        evidence += gammaln(prior.sum(axis=1)).sum()
-        evidence -= gammaln(self.graph.data.sum(axis=1) + prior.sum(axis=1)).sum()
-        evidence += gammaln((self.graph.data + prior).data).sum()
-        evidence -= gammaln(prior.data).sum()
+        evidence += gammaln(prior.sum(axis=1) + uniform).sum()
+        evidence -= gammaln(self.graph.data.sum(axis=1) + prior.sum(axis=1) + uniform).sum()
+        evidence += gammaln((self.graph.data + prior).data + protoprior).sum()
+        evidence -= gammaln(prior.data + protoprior).sum() + ( (self.graph.data.size - prior.size) * gammaln(protoprior))
+        ### the uniform is added since it is the starting point for the first value of k
+        ### the last negative sum includes (graph.size - prior.size) * uniform to include all empty cells
         return evidence
 
     ######################################################
