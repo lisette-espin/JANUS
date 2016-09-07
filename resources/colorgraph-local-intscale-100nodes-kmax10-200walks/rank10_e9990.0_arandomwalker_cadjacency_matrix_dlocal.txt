@@ -1,0 +1,7 @@
+Data generated as randomwalker
+===== RANK k=10 =====
+data                     -83590.304
+homophily                -88024.164
+uniform                  -91507.754
+heterophily              -100308.064
+selfloop                 -128099.854

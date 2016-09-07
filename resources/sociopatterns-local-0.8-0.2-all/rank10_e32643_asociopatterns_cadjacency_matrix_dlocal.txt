@@ -1,0 +1,8 @@
+Data generated as sociopatterns
+===== RANK k=10 =====
+data                     -129633.713
+same_household           -168268.928
+similar_age              -180180.774
+uniform                  -180919.815
+same_gender              -180920.638
+different_gender         -182374.342

@@ -1,0 +1,168 @@
+/usr/local/Cellar/python/2.7.12/Frameworks/Python.framework/Versions/2.7/bin/python2.7 /Users/espin/Documents/GESIS/JANUS/code/JANUS/python-code/colorgraph_Philipp.py
+Name: 
+Type: MultiGraph
+Number of nodes: 100
+Number of edges: 9990
+Average degree: 199.8000
+Colors Distribution: {'blue': 50, 'red': 50}
+- plot adjacency done!
+Total edges: 9990
+[234, 230, 229, 225, 225, 221, 220, 218, 216, 215, 215, 214, 213, 213, 212, 212, 211, 210, 210, 210, 210, 210, 209, 208, 208, 207, 207, 206, 205, 204, 204, 204, 204, 203, 203, 203, 203, 202, 202, 202, 202, 202, 202, 202, 202, 202, 200, 200, 200, 200, 199, 199, 199, 199, 198, 198, 198, 198, 197, 197, 197, 196, 195, 195, 195, 194, 194, 194, 194, 193, 193, 193, 193, 193, 192, 192, 192, 192, 192, 191, 191, 189, 189, 188, 188, 188, 187, 187, 186, 186, 186, 185, 184, 183, 182, 182, 182, 168, 164, 164]
+234
+belief: 4920.0
+belief: 4980.0
+- plot adjacency done!
+- plot adjacency done!
+sum belief: 100.0
+HYPOTHESIS SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/hypothesis_data_dlocal.mtx
+sum belief: 0.0
+HYPOTHESIS SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/hypothesis_uniform_dlocal.mtx
+sum belief: 100.0
+HYPOTHESIS SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/hypothesis_selfloop_dlocal.mtx
+sum belief: 100.0
+HYPOTHESIS SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/hypothesis_homophily_dlocal.mtx
+sum belief: 100.0
+HYPOTHESIS SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/hypothesis_heterophily_dlocal.mtx
+
+===== CALCULATING EVIDENCES =====
+
+::: Hypothesis: data 
+- hypothesis (100, 100) sum:100.0 loaded: data
+- k=0: -91386.5178286
+- hypothesis (100, 100) sum:100.0 loaded: data
+- k=1: -87419.6194639
+- hypothesis (100, 100) sum:100.0 loaded: data
+- k=2: -85988.268405
+- hypothesis (100, 100) sum:100.0 loaded: data
+- k=3: -85217.6272461
+- hypothesis (100, 100) sum:100.0 loaded: data
+- k=4: -84731.388115
+- hypothesis (100, 100) sum:100.0 loaded: data
+- k=5: -84395.4368887
+- hypothesis (100, 100) sum:100.0 loaded: data
+- k=6: -84149.0094721
+- hypothesis (100, 100) sum:100.0 loaded: data
+- k=7: -83960.3595435
+- hypothesis (100, 100) sum:100.0 loaded: data
+- k=8: -83811.2211002
+- hypothesis (100, 100) sum:100.0 loaded: data
+- k=9: -83690.3179953
+- hypothesis (100, 100) sum:100.0 loaded: data
+- k=10: -83590.3036026
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/evidence_data_e9990.0_arandomwalker_cadjacency_matrix_dlocal.p
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/evidence_data_e9990.0_arandomwalker_cadjacency_matrix_dlocal.txt
+
+::: Hypothesis: uniform 
+- hypothesis (100, 100) sum:0.0 loaded: uniform
+- k=0: -91386.5178286
+- hypothesis (100, 100) sum:0.0 loaded: uniform
+/usr/local/lib/python2.7/site-packages/scipy/sparse/compressed.py:730: SparseEfficiencyWarning: Changing the sparsity structure of a csr_matrix is expensive. lil_matrix is more efficient.
+  SparseEfficiencyWarning)
+- k=1: -91021.0038405
+- hypothesis (100, 100) sum:0.0 loaded: uniform
+- k=2: -91044.1777122
+- hypothesis (100, 100) sum:0.0 loaded: uniform
+- k=3: -91121.311635
+- hypothesis (100, 100) sum:0.0 loaded: uniform
+- k=4: -91200.5194015
+- hypothesis (100, 100) sum:0.0 loaded: uniform
+- k=5: -91271.597274
+- hypothesis (100, 100) sum:0.0 loaded: uniform
+- k=6: -91333.3157537
+- hypothesis (100, 100) sum:0.0 loaded: uniform
+- k=7: -91386.566327
+- hypothesis (100, 100) sum:0.0 loaded: uniform
+- k=8: -91432.6235414
+- hypothesis (100, 100) sum:0.0 loaded: uniform
+- k=9: -91472.6823674
+- hypothesis (100, 100) sum:0.0 loaded: uniform
+- k=10: -91507.7539852
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/evidence_uniform_e9990.0_arandomwalker_cadjacency_matrix_dlocal.p
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/evidence_uniform_e9990.0_arandomwalker_cadjacency_matrix_dlocal.txt
+
+::: Hypothesis: selfloop 
+- hypothesis (100, 100) sum:100.0 loaded: selfloop
+- k=0: -91386.5178286
+- hypothesis (100, 100) sum:100.0 loaded: selfloop
+- k=1: -100024.84438
+- hypothesis (100, 100) sum:100.0 loaded: selfloop
+- k=2: -105950.197337
+- hypothesis (100, 100) sum:100.0 loaded: selfloop
+- k=3: -110489.421994
+- hypothesis (100, 100) sum:100.0 loaded: selfloop
+- k=4: -114175.907589
+- hypothesis (100, 100) sum:100.0 loaded: selfloop
+- k=5: -117282.190544
+- hypothesis (100, 100) sum:100.0 loaded: selfloop
+- k=6: -119967.290464
+- hypothesis (100, 100) sum:100.0 loaded: selfloop
+- k=7: -122332.389042
+- hypothesis (100, 100) sum:100.0 loaded: selfloop
+- k=8: -124445.962759
+- hypothesis (100, 100) sum:100.0 loaded: selfloop
+- k=9: -126356.555835
+- hypothesis (100, 100) sum:100.0 loaded: selfloop
+- k=10: -128099.854443
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/evidence_selfloop_e9990.0_arandomwalker_cadjacency_matrix_dlocal.p
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/evidence_selfloop_e9990.0_arandomwalker_cadjacency_matrix_dlocal.txt
+
+::: Hypothesis: homophily 
+- hypothesis (100, 100) sum:100.0 loaded: homophily
+- k=0: -91386.5178286
+- hypothesis (100, 100) sum:100.0 loaded: homophily
+- k=1: -89328.7463714
+- hypothesis (100, 100) sum:100.0 loaded: homophily
+- k=2: -88724.2875832
+- hypothesis (100, 100) sum:100.0 loaded: homophily
+- k=3: -88449.0601035
+- hypothesis (100, 100) sum:100.0 loaded: homophily
+- k=4: -88297.4558183
+- hypothesis (100, 100) sum:100.0 loaded: homophily
+- k=5: -88204.0525486
+- hypothesis (100, 100) sum:100.0 loaded: homophily
+- k=6: -88142.0217976
+- hypothesis (100, 100) sum:100.0 loaded: homophily
+- k=7: -88098.5285371
+- hypothesis (100, 100) sum:100.0 loaded: homophily
+- k=8: -88066.7479757
+- hypothesis (100, 100) sum:100.0 loaded: homophily
+- k=9: -88042.7577636
+- hypothesis (100, 100) sum:100.0 loaded: homophily
+- k=10: -88024.1643866
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/evidence_homophily_e9990.0_arandomwalker_cadjacency_matrix_dlocal.p
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/evidence_homophily_e9990.0_arandomwalker_cadjacency_matrix_dlocal.txt
+
+::: Hypothesis: heterophily 
+- hypothesis (100, 100) sum:100.0 loaded: heterophily
+- k=0: -91386.5178286
+- hypothesis (100, 100) sum:100.0 loaded: heterophily
+- k=1: -93603.8870109
+- hypothesis (100, 100) sum:100.0 loaded: heterophily
+- k=2: -95276.8351276
+- hypothesis (100, 100) sum:100.0 loaded: heterophily
+- k=3: -96498.8535624
+- hypothesis (100, 100) sum:100.0 loaded: heterophily
+- k=4: -97427.8178486
+- hypothesis (100, 100) sum:100.0 loaded: heterophily
+- k=5: -98159.0482698
+- hypothesis (100, 100) sum:100.0 loaded: heterophily
+- k=6: -98750.7060881
+- hypothesis (100, 100) sum:100.0 loaded: heterophily
+- k=7: -99240.024201
+- hypothesis (100, 100) sum:100.0 loaded: heterophily
+- k=8: -99651.9377383
+- hypothesis (100, 100) sum:100.0 loaded: heterophily
+- k=9: -100003.796438
+- hypothesis (100, 100) sum:100.0 loaded: heterophily
+- k=10: -100308.064104
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/evidence_heterophily_e9990.0_arandomwalker_cadjacency_matrix_dlocal.p
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/evidence_heterophily_e9990.0_arandomwalker_cadjacency_matrix_dlocal.txt
+Data generated as randomwalker
+===== RANK k=10 =====
+data                     -83590.304
+homophily                -88024.164
+uniform                  -91507.754
+heterophily              -100308.064
+selfloop                 -128099.854
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/rank10_e9990.0_arandomwalker_cadjacency_matrix_dlocal.txt
+FILE SAVED: ../resources/colorgraph-local-intscale-100nodes-kmax10-200walks/evidences_e9990.0_arandomwalker_cadjacency_matrix_dlocal.p

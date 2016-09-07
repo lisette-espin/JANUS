@@ -13,6 +13,10 @@ import os
 import graph_tool.all as gt
 import numpy as np
 from scipy import io
+import pandas as pd
+import operator
+import seaborn as sns; sns.set(); sns.set_style("whitegrid"); sns.set_style("ticks"); sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 2.5}); sns.set_style({'legend.frameon': True})
+import sys
 
 #########################################################################################################
 ### CONSTANTS
@@ -35,7 +39,8 @@ class Graph(object):
     # INITIALIZATION
     ######################################################
     def __init__(self,isdirected,isweighted,ismultigraph,dependency,algorithm,classtype,output):
-        self.data = None                            # csr_matrix adjacency matrix of the graph
+        self.data = None                            # it is dataoriginal if local, otherwise .triu.flatten
+        self.dataoriginal = None                    # csr_matrix adjacency matrix of the graph
         self.isdirected = isdirected                # boolean: is directed or not
         self.isweighted = isweighted                # boolean: is weighted or not
         self.ismultigraph = ismultigraph            # boolean: is multigraph or not
@@ -78,10 +83,12 @@ class Graph(object):
             self.plotGraph(G)
             self.plotDegreeDistribution(G)
             self.plotWeightDistribution(G)
-        if self.data is not None:
+            self.plotAdjacencyMatrix(G)
+            self.plotGraphBlocks(G)
+        if self.dataoriginal is not None:
             print('Dependency: {}'.format(self.dependency))
-            print('Adjacency Matrix shape: {}'.format(self.data.shape))
-            print('Adjacency (connectivity/weights) Matrix sum: {}'.format(self.data.sum()))
+            print('Adjacency Matrix shape: {}'.format(self.dataoriginal.shape))
+            print('Adjacency (connectivity/weights) Matrix sum: {}'.format(self.dataoriginal.sum()))
         else:
             raise Exception('There is no data loaded!')
 
@@ -89,8 +96,18 @@ class Graph(object):
     # SET DATA GRAPH
     ######################################################
     def extractData(self, G=None):
-        if self.dependency == GLOBAL:
-            self.data = csr_matrix(self.data.toarray().flatten())
+        return
+        # if self.dependency == GLOBAL:
+        #     if self.isdirected:
+        #         self.data = csr_matrix(self.data.toarray().flatten())
+        #     else:
+        #         print(self.data.toarray())
+        #         print(self.data.sum())
+        #         tmp = np.tril(self.data.toarray(), 0)
+        #         print(tmp)
+        #         print(tmp.sum())
+        #         # raw_input('data...')
+        #         self.data = csr_matrix(np.triu(self.data.toarray(), 0).flatten())
 
     def saveAll(self, G):
         self.showInfo(G)
@@ -104,15 +121,15 @@ class Graph(object):
 
     def loadData(self):
         fn = self.getFileNameAdjacency()
-        self.data = csr_matrix(io.mmread(fn))
-        self.nnodes = self.data.shape[1]
-        self.nedges = int(self.data.sum())
+        self.dataoriginal = csr_matrix(io.mmread(fn))
+        self.nnodes = self.dataoriginal.shape[1]
+        self.nedges = int(self.dataoriginal.sum())
         print('- data loaded')
 
     def saveData(self):
         fn = self.getFileNameAdjacency()
         if not self.fileExists(fn):
-            io.mmwrite(fn, self.data)
+            io.mmwrite(fn, self.dataoriginal)
             print('- data (adjacency matrix) saved')
 
     def saveGraph(self):
@@ -132,10 +149,11 @@ class Graph(object):
         if degree_sequence is not None:
             fn = self.getFileNamePlot('degree')
             plt.plot(degree_sequence,'b-',marker='o')
+            # n, bins, patches = plt.hist(degree_sequence, 5, facecolor='green', alpha=0.75)
             plt.title("Degree rank plot")
             plt.ylabel("degree")
             plt.xlabel("node instances")
-            plt.savefig(fn)
+            plt.savefig(fn, dpi=1200, bbox_inches='tight')
             plt.close()
             print('- plot degree distribution done!')
 
@@ -146,9 +164,40 @@ class Graph(object):
             plt.title("Weight rank plot")
             plt.ylabel("weight")
             plt.xlabel("edge instance")
-            plt.savefig(fn)
+            plt.savefig(fn, dpi=1200, bbox_inches='tight')
             plt.close()
             print('PLOT WEIGHT DISTRIBUTION DONE!')
+
+    def plotAdjacencyMatrix(self, matrix=None, labels=None, size=None):
+
+        matrix = self.dataoriginal if matrix is None else matrix
+        labels = [] if labels is None else labels
+        size = (10,10) if size is None else size
+
+        grid_kws = {"height_ratios": (.9, .05), "hspace": .3}
+        f, (ax, cbar_ax) = plt.subplots(2, gridspec_kw=grid_kws, figsize=size)
+        ax = sns.heatmap(matrix.toarray(), ax=ax,
+            #annot=True,
+            cbar_ax=cbar_ax,
+            cbar_kws={"orientation": "horizontal"},
+                         vmax=matrix.toarray().max(),
+                         xticklabels=labels,
+                         yticklabels=labels
+                         )
+        ax.set_xlabel('target nodes')
+        ax.set_ylabel('source nodes')
+        ax.xaxis.tick_top()
+        ax.yaxis.tick_right()
+        ax.tick_params(axis='x', colors='grey')
+        ax.tick_params(axis='y', colors='grey')
+        plt.setp( ax.xaxis.get_majorticklabels(), horizontalalignment='center' )
+        plt.setp( ax.yaxis.get_majorticklabels(), rotation=270, horizontalalignment='center', x=1.02 )
+
+        cbar_ax.set_title('cardinality (no. of edges)')
+        plt.savefig(self.getFileNamePlot('matrix'), dpi=1200, bbox_inches='tight')
+
+        print('- plot adjacency done!')
+        plt.close()
 
 #########################################################################################################
 ### GraphTool
@@ -168,10 +217,9 @@ class GraphTool(Graph):
         self._args['blocks'] = G.vp.blocks
         self.nnodes = G.num_vertices()
         self.nedges = G.num_edges()
-        self.data = lil_matrix((self.nnodes,self.nnodes))
-        for e in G.edges():
-            self.data[G.vertex_index[e.source()],G.vertex_index[e.target()]] += 1.
-        self.data = self.data.tocsr()
+        self.dataoriginal = self.getAdjacency(G)
+        self.dataoriginal = self.dataoriginal.tocsr()
+        print('data graph-tool: {}'.format(self.dataoriginal.sum()))
         super(GraphTool, self).extractData(G)
 
     def saveGraph(self, G):
@@ -188,16 +236,56 @@ class GraphTool(Graph):
         print('- graph loaded!')
         return g
 
+    def getAdjacency(self, G):
+        matrix = lil_matrix((self.nnodes,self.nnodes))
+
+        for x1,v1 in enumerate(G.vertices()):
+            for x2 in range(x1,self.nnodes):  # to traverse only half of the matrix
+                v2 = G.vertex(x2)
+
+                if x2 > x1:
+                    nedges = len(G.edge(v1,v2,all_edges=True))
+                    if nedges > 0:
+                        matrix[v1,v2] = nedges
+
+                    nedges = len(G.edge(v2,v1,all_edges=True))
+                    if nedges > 0:
+                        matrix[v2,v1] = nedges
+
+                elif x2 == x1: #selfloop
+                    nedges = len(G.edge(v2,v1,all_edges=True))
+                    if nedges > 0:
+                        matrix[v1,v2] = nedges
+                        matrix[v2,v1] = nedges
+
+        print('getAdjacency: {}'.format(matrix.sum()))
+        return matrix #.copy()
+
     ######################################################
     # PLOTTING
     ######################################################
     def plotGraph(self, G):
+        print('plot graph in graph-tools')
         if G is not None:
             fn = self.getFileNamePlot('graph')
             if not self.fileExists(fn):
-                pos = gt.arf_layout(G, max_iter=1000)
-                gt.graph_draw(G, pos=pos, vertex_fill_color=G.vp.blocks, edge_color="black", output=fn)
-                super(GraphTool, self).plotGraph()
+
+                try:
+                    # pos = gt.random_layout(G)
+                    # pos = gt.arf_layout(G)
+
+                    # label = G.new_vertex_property("string")
+                    # for v in G.vertices():
+                    #     label[v] = '{}'.format(v)
+
+                    #vertex_text=label,pos=pos,
+                    gt.graph_draw(G, vertex_fill_color=G.vp.blocks, edge_color="black", output=fn)
+                    plt.close()
+                    super(GraphTool, self).plotGraph()
+                except Exception as ex:
+                    print(ex.errno, ex.strerror)
+                    plt.close()
+                    sys.exc_info()[0]
 
     def plotDegreeDistribution(self, G):
         if not self.fileExists(self.getFileNamePlot('degree')):
@@ -205,9 +293,11 @@ class GraphTool(Graph):
                 degree = []
                 for v in G.vertices():
                     d = v.out_degree()
+                    # G.vp.blocks[v]
+                    # print('in:{}, out:{}, all:{}'.format(v.in_degree(), v.out_degree(), sum([1 for e in v.all_edges()])))
                     degree.append(d)
-                degree_sequence = sorted(degree, reverse=False)
-                super(GraphTool, self).plotDegreeDistribution(degree_sequence)
+                #degree_sequence = sorted(degree, reverse=False)
+                super(GraphTool, self).plotDegreeDistribution(degree)
 
     def plotWeightDistribution(self, G):
         if not self.fileExists(self.getFileNamePlot('weights')):
@@ -222,6 +312,30 @@ class GraphTool(Graph):
                 except Exception:
                     return
 
+    def plotAdjacencyMatrix(self, G):
+
+        m = set(sorted([G.vp.blocks[v] for v in G.vertices()]))
+        _labels = {i:sum([G.vp.blocks[v]==i for v in G.vertices()]) for i in m}
+        labels = ['' for i in G.vertices()]
+        counter = 0
+        for b,n in _labels.items():
+            index = int((n / 2) + counter)
+            counter += n
+            labels[index] = '{}\n{}'.format('membership',b+1)
+
+        if self.dataoriginal is None:
+            self.dataoriginal = self.getAdjacency(G)
+
+        super(GraphTool, self).plotAdjacencyMatrix(labels=labels)
+
+    def plotGraphBlocks(self, G):
+        state = gt.minimize_blockmodel_dl(G)
+        # pos = gt.arf_layout(G, max_iter=0)
+        state.draw(vertex_shape=state.get_blocks(),output=self.getFileNamePlot('graph-blocks-mdl')) #pos=pos,
+        e = state.get_matrix()
+        # print(e.todense())
+        state = gt.minimize_nested_blockmodel_dl(G, deg_corr=True)
+        state.draw(output=self.getFileNamePlot('graph-nested-mdl'))
 
 #########################################################################################################
 ### NetworkX
@@ -238,7 +352,7 @@ class NetworkX(Graph):
     # SET DATA GRAPH
     ######################################################
     def extractData(self, G):
-        self.data = csr_matrix(nx.adjacency_matrix(G))
+        self.dataoriginal = csr_matrix(nx.adjacency_matrix(G))
         self.nnodes = nx.number_of_nodes(G)
         self.nedges = nx.number_of_edges(G)
         super(NetworkX, self).extractData(G)
@@ -263,7 +377,7 @@ class NetworkX(Graph):
             fn = self.getFileNamePlot('graph')
             pos = nx.spring_layout(G)
             nx.draw(G)
-            plt.savefig(fn)
+            plt.savefig(fn, dpi=1200, bbox_inches='tight')
             plt.close()
             print(nx.info(G))
             super(NetworkX, self).plotGraph()
@@ -297,7 +411,7 @@ class DataframePandas(Graph):
     # SET DATA GRAPH
     ######################################################
     def extractData(self, dataframe):
-        self.data = csr_matrix(dataframe.as_matrix())
+        self.dataoriginal = csr_matrix(dataframe.as_matrix())
         self._args['indexes'] = dataframe.columns
         self.nnodes = dataframe.shape[0]
         self.nedges = int(dataframe.sum().sum())
@@ -336,9 +450,11 @@ class DataMatrix(Graph):
     # SET DATA GRAPH
     ######################################################
     def extractData(self, matrix):
-        self.data = matrix
+        print('extract data datamatrix!!!')
+        self.dataoriginal = matrix
         self.nnodes = matrix.shape[1]
         self.nedges = int(matrix.sum())
+        print(self.nnodes,self.nedges)
         super(DataMatrix, self).extractData()
 
     def saveGraph(self, G):
@@ -358,5 +474,3 @@ class DataMatrix(Graph):
 
     def plotWeightDistribution(self, G):
         return
-
-

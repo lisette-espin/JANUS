@@ -10,7 +10,7 @@ from org.gesis.libs import graph as c
 ### Global Dependencies
 ################################################################################
 from sklearn.preprocessing import normalize
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, lil_matrix
 from scipy import io
 import numpy as np
 import os
@@ -29,7 +29,7 @@ class Hypothesis(object):
     ######################################################
     # INITIALIZATION
     ######################################################
-    def __init__(self, name, dependency, output, belief=None):
+    def __init__(self, name, dependency, isdirected, output, belief=None, nnodes=None):
         '''
         :param name:       string
         :param dependency: global or local
@@ -40,8 +40,9 @@ class Hypothesis(object):
         self.name = name
         self.dependency = dependency
         self.outout = output
+        self.isdirected = isdirected
         self.beliefnorm = None
-        self.nnodes = -1 if belief is None else belief.shape[0]
+        self.nnodes = -1 if nnodes is None and belief is None else nnodes if nnodes is not None else belief.shape[0]
         self._normalize(belief)
 
 
@@ -50,7 +51,7 @@ class Hypothesis(object):
     ######################################################
     def elicit_prior(self, k, copy=True):
         kappa =  self.nnodes * k
-        if k in [0.,0.1] or self.beliefnorm.size == 0:
+        if k in [0.,0.1]:
             prior = csr_matrix(self.beliefnorm.shape, dtype=np.float64)
         else:
             if copy:
@@ -69,9 +70,23 @@ class Hypothesis(object):
     ######################################################
     def _normalize(self, belief, copy=True):
         if belief is not None:
+
             if self.dependency == c.GLOBAL:
-                belief = csr_matrix(belief.toarray().flatten())
-            self.beliefnorm = normalize(belief, axis=1, norm='l1', copy=copy)
+                print('shape before triu: {}'.format(belief.shape))
+                if self.isdirected:
+                    beliefnew = csr_matrix(belief.toarray().flatten())
+                else:
+                    # belief = csr_matrix(np.triu(belief.toarray(), 0).flatten())
+                    beliefnew = csr_matrix(belief[np.triu_indices(self.nnodes)])
+
+                print('shape after triu: {}'.format(beliefnew.shape))
+            else:
+                beliefnew = belief
+
+            self.beliefnorm = normalize(beliefnew, axis=1, norm='l1', copy=copy)
+            print('sum belief: {}'.format(self.beliefnorm.sum()))
+            del(beliefnew)
+
 
     def getFileName(self):
         fn = 'hypothesis_{}_d{}.{}'.format(self.name, self.dependency,EXT)
@@ -88,8 +103,7 @@ class Hypothesis(object):
         fn = self.getFileName()
         if os.path.exists(fn):
             self.beliefnorm = csr_matrix(io.mmread(fn))
-            self.nnodes = self.beliefnorm.shape[1]
-            print('- hypothesis {} loaded: {}'.format(self.beliefnorm.shape,self.name))
+            print('- hypothesis {} sum:{} loaded: {}'.format(self.beliefnorm.shape,self.beliefnorm.sum(),self.name))
 
     def exists(self):
         return os.path.exists(self.getFileName())
