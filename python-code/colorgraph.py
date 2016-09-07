@@ -47,9 +47,9 @@ import seaborn as sns; sns.set(); sns.set_style("whitegrid"); sns.set_style("tic
 ################################################################################
 ### Constants
 ################################################################################
-BLOCKS = 2
+BLOCKS = 2                                  # number of blocks
 NODES = 100                                 # number of nodes
-WALKS = 1                                  # No. of iteration to create multigraph random walker
+WALKS = 200                                  # No. of iteration to create multigraph random walker
 LINKSONLY = False
 LOW = 0.2
 HIGH = 0.8
@@ -108,7 +108,6 @@ class RandomWalkGraph(object):
         plt.savefig(fn, dpi=1200, bbox_inches='tight')
         plt.close()
 
-
     def plot_degree_rank(self):
         degree_sequence=sorted(nx.degree(self.G).values(),reverse=True)
         dmax=max(degree_sequence)
@@ -131,7 +130,6 @@ class RandomWalkGraph(object):
         fn = os.path.join(self.path,'{}-degree-rank.pdf'.format(self.name))
         plt.savefig(fn, dpi=1200, bbox_inches='tight')
         plt.close()
-
 
     def plot_adjacency(self):
         if self.data is None and self.G is not None:
@@ -202,38 +200,34 @@ class RandomWalkGraph(object):
             else:
                 self.G = nx.DiGraph() if self.isdirected else nx.Graph()
 
-            ### Creating nodes with attributes
-            nodes = {n:COLORVOCAB[int(n*BLOCKS/NODES)] for n in range(NODES)}
+            ### Creating nodes with attributes (50% each color)
+            ### 0:red, 1:blue
+            nodes = {n:int(n*BLOCKS/NODES) for n in range(NODES)}
 
-            ### Adding nodes (wirh color attribute) to graph
-            for n,value in nodes.items():
-                self.G.add_node(n, color=value)
+            for source,block in nodes.items():
 
-            for i in range(WALKS):
-                ### Adding edges
-                for n1 in self.G.nodes(data=True):
-                    for a1,v1 in n1[1].items():
+                if source not in self.G:
+                    self.G.add_node(source, color=COLORVOCAB[block])
 
-                        probs = self.probabilities[v1]
-                        for v2,p12 in probs.items():
+                for i in range(WALKS):
+                    target = None
+                    while(target == source or target is None):
+                        target = randint(0,NODES-1)
 
-                            if self.selfloops:
-                                othernodes = [n[0] for n in self.G.nodes(data=True) if n[1][a1] == v2]
-                            else:
-                                othernodes = [n[0] for n in self.G.nodes(data=True) if n[1][a1] == v2 and n[0] != n1[0]]
+                    if target not in self.G:
+                        self.G.add_node(target, color=COLORVOCAB[nodes[target]])
 
-                            dist = np.random.binomial(n=1,p=p12,size=len(othernodes))
+                    prob = COLORPROB[COLORVOCAB[block]][COLORVOCAB[nodes[target]]]
+                    draw = np.random.binomial(n=1,p=prob,size=1)
 
-                            for i2, link in enumerate(dist):
-                                if link == 1:
+                    if draw:
+                        self.G.add_edge(source, target, weight=1.)
+                        if COLORVOCAB[block] not in self.colordistribution:
+                            self.colordistribution[COLORVOCAB[block]] = {}
+                        if COLORVOCAB[nodes[target]] not in self.colordistribution[COLORVOCAB[block]]:
+                            self.colordistribution[COLORVOCAB[block]][COLORVOCAB[nodes[target]]] = 0
+                        self.colordistribution[COLORVOCAB[block]][COLORVOCAB[nodes[target]]] += 1
 
-                                    self.G.add_edge(n1[0], othernodes[i2], weight=1.)
-
-                                    if v1 not in self.colordistribution:
-                                        self.colordistribution[v1] = {}
-                                    if v2 not in self.colordistribution[v1]:
-                                        self.colordistribution[v1][v2] = 0
-                                    self.colordistribution[v1][v2] += 1
 
             print(nx.info(self.G))
             self.data = nx.adjacency_matrix(self.G)
