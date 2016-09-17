@@ -92,8 +92,8 @@ def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kma
     janus.evidences.pop('B6: popularity-citations',None)
     janus.evidences.pop('B5: popularity-publications',None)
 
-    janus.plotEvidences(krank)
-    janus.plotBayesFactors(krank)
+    janus.plotEvidences(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.6,fontsize='x-small')
+    janus.plotBayesFactors(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.5,fontsize='x-small')
     janus.saveReadme(start,stop)
 
 def getMatrix(datasets,output):
@@ -109,7 +109,7 @@ def getMatrix(datasets,output):
 
 def plot_matrix(m,path,name):
     grid_kws = {"height_ratios": (.9, .05), "hspace": .3}
-    f, (ax, cbar_ax) = plt.subplots(2, gridspec_kw=grid_kws, figsize=(10,10))
+    f, (ax, cbar_ax) = plt.subplots(2, gridspec_kw=grid_kws, figsize=(5,5))
     ax = sns.heatmap(m.toarray(), ax=ax,
         # annot=True,
         cbar_ax=cbar_ax,
@@ -123,7 +123,7 @@ def plot_matrix(m,path,name):
     plt.setp( ax.xaxis.get_majorticklabels(), horizontalalignment='center' )
     plt.setp( ax.yaxis.get_majorticklabels(), rotation=270, horizontalalignment='center', x=1.02 )
 
-    cbar_ax.set_title('cardinality (no. of edges)')
+    cbar_ax.set_title('edge multiplicity')
 
     fn = os.path.join(path,name)
     plt.savefig(fn, dpi=1200, bbox_inches='tight')

@@ -143,7 +143,7 @@ class JANUS(object):
     ######################################################
 
     def plotEvidences(self, krank=None, **kwargs):
-        fig = plt.figure(figsize=(9, 6))
+        fig = plt.figure(figsize=kwargs['figsize'])
         ax = fig.add_subplot(111)
         fig.canvas.draw()
 
@@ -170,8 +170,7 @@ class JANUS(object):
             t = [(l,h,tmp[l]) for l,h in zip(labels, handles)]
             labels, handles, evidences = zip(*sorted(t,key=lambda t: t[2],reverse=True))
 
-        # legend = ax.legend(handles, labels, loc=2, bbox_to_anchor=(1.05, 1), borderaxespad=0.) # outside of the figure
-        legend = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(kwargs['bboxx'],kwargs['bboxy']), fontsize = 'x-small') # inside
+        legend = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(kwargs['bboxx'],kwargs['bboxy']), fontsize=kwargs['fontsize'], ncol=1 if 'ncol' not in kwargs else kwargs['ncol']) # inside
         ax.grid('on')
 
         plt.savefig(self.getFilePathName('evidences','pdf'), bbox_extra_artists=(legend,), bbox_inches='tight', dpi=1200)
@@ -190,7 +189,7 @@ class JANUS(object):
 
     def plotBayesFactors(self, krank=None, **kwargs):
 
-        fig = plt.figure(figsize=(9, 6))
+        fig = plt.figure(figsize=kwargs['figsize'])
         ax = fig.add_subplot(111)
         fig.canvas.draw()
 
@@ -219,7 +218,7 @@ class JANUS(object):
             t = [(l,h,tmp[l]) for l,h in zip(labels, handles)]
             labels, handles, evidences = zip(*sorted(t,key=lambda t: t[2],reverse=True))
 
-        legend = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(kwargs['bboxx'],kwargs['bboxy']), fontsize = 'x-small')
+        legend = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(kwargs['bboxx'],kwargs['bboxy']), fontsize=kwargs['fontsize'], ncol=1 if 'ncol' not in kwargs else kwargs['ncol'])
         ax.grid('on')
 
         plt.savefig(self.getFilePathName('bayesfactors','pdf'), bbox_extra_artists=(legend,), bbox_inches='tight', dpi=1200)

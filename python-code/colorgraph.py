@@ -56,6 +56,7 @@ HIGH = 0.8
 COLORDIST = {'red':50,'blue':50}            # distribution of colors in nodes
 COLORPROB = {'red':{'red':HIGH,'blue':LOW},'blue':{'red':LOW,'blue':HIGH}}    # color probabilities
 COLORVOCAB = {0:'red',1:'blue'}
+FIGSIZE = (5,5)
 
 ################################################################################
 ### Class
@@ -131,7 +132,7 @@ class RandomWalkGraph(object):
         plt.savefig(fn, dpi=1200, bbox_inches='tight')
         plt.close()
 
-    def plot_adjacency(self):
+    def plot_adjacency(self,**kwargs):
         if self.data is None and self.G is not None:
             self.data = nx.adjacency_matrix(self.G)
 
@@ -166,7 +167,7 @@ class RandomWalkGraph(object):
 
         grid_kws = {"height_ratios": (.9, .05), "hspace": .3}
 
-        f, (ax, cbar_ax) = plt.subplots(2, gridspec_kw=grid_kws, figsize=(10,10))
+        f, (ax, cbar_ax) = plt.subplots(2, gridspec_kw=grid_kws, figsize=kwargs['figsize'])
         ax = sns.heatmap(m.toarray(), ax=ax,
             # annot=True,
             cbar_ax=cbar_ax,
@@ -183,7 +184,7 @@ class RandomWalkGraph(object):
         plt.setp( ax.xaxis.get_majorticklabels(), horizontalalignment='center' )
         plt.setp( ax.yaxis.get_majorticklabels(), rotation=270, horizontalalignment='center', x=1.02 )
 
-        cbar_ax.set_title('cardinality (no. of edges)')
+        cbar_ax.set_title('edge multiplicity', y=-5)
 
         fn = os.path.join(self.path,'{}-adjacency-matrix.pdf'.format(self.name))
         plt.savefig(fn, dpi=1200, bbox_inches='tight')
@@ -276,7 +277,7 @@ def homophily(datanode1, datanode2):
 def heterophily(datanode1, datanode2):
     return LOW if datanode1['color'] == datanode2['color'] else HIGH
 
-def plot_adjacency(rg, matrix,name):
+def plot_adjacency(rg, matrix,name,**kwargs):
     m = lil_matrix(rg.data.shape)
     row = 0
     for n1 in rg.nodes_sorted:
@@ -290,7 +291,7 @@ def plot_adjacency(rg, matrix,name):
 
     grid_kws = {"height_ratios": (.9, .05), "hspace": .3}
 
-    f, (ax, cbar_ax) = plt.subplots(2, gridspec_kw=grid_kws, figsize=(10,10))
+    f, (ax, cbar_ax) = plt.subplots(2, gridspec_kw=grid_kws, figsize=kwargs['figsize'])
     ax = sns.heatmap(m.toarray(), ax=ax,
         # annot=True,
         cbar_ax=cbar_ax,
@@ -333,8 +334,8 @@ def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,
     janus.generateEvidences(kmax,klogscale)
     janus.showRank(krank)
     janus.saveEvidencesToFile()
-    janus.plotEvidences(krank,bboxx=0.8,bboxy=0.8)
-    janus.plotBayesFactors(krank,bboxx=0.8,bboxy=0.8)
+    janus.plotEvidences(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.64,fontsize='x-small')
+    janus.plotBayesFactors(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.63,fontsize='x-small')
     janus.saveReadme()
 
 
@@ -365,15 +366,15 @@ rg = RandomWalkGraph(nnodes=NODES,
                      path=output,
                      name='data')
 rg.createGraph()
-rg.plot_adjacency()
+rg.plot_adjacency(figsize=FIGSIZE)
 rg.plot_color_distribution()
 rg.plot_degree_rank()
 
 h1 = build_hypothesis(rg.G,homophily,selfloops)
 h2 = build_hypothesis(rg.G,heterophily,selfloops)
 
-plot_adjacency(rg,h1,'homophily')
-plot_adjacency(rg,h2,'heterophily')
+plot_adjacency(rg,h1,'homophily',figsize=FIGSIZE)
+plot_adjacency(rg,h2,'heterophily',figsize=FIGSIZE)
 
 run_janus(rg.data,isdirected,isweighted,ismultigraph,dependency,algorithm,output,kmax,klogscale,krank,
           homophily=h1,

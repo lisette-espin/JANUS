@@ -172,7 +172,7 @@ class Graph(object):
 
         matrix = self.dataoriginal if matrix is None else matrix
         labels = [] if labels is None else labels
-        size = (10,10) if size is None else size
+        size = (5,5) if size is None else size
 
         grid_kws = {"height_ratios": (.9, .05), "hspace": .3}
         f, (ax, cbar_ax) = plt.subplots(2, gridspec_kw=grid_kws, figsize=size)
@@ -193,7 +193,7 @@ class Graph(object):
         plt.setp( ax.xaxis.get_majorticklabels(), horizontalalignment='center' )
         plt.setp( ax.yaxis.get_majorticklabels(), rotation=270, horizontalalignment='center', x=1.02 )
 
-        cbar_ax.set_title('cardinality (no. of edges)')
+        cbar_ax.set_title('edge multiplicity')
         plt.savefig(self.getFileNamePlot('matrix'), dpi=1200, bbox_inches='tight')
 
         print('- plot adjacency done!')

@@ -28,6 +28,7 @@ FILES = ['scc2034_kilifi_all_contacts_across_households.csv','scc2034_kilifi_all
 HIGH = 0.8
 LOW = 0.2
 LINKSONLY = False
+FIGSIZE = (5,5)
 
 ######################################################################
 # networkx
@@ -69,9 +70,9 @@ def save_matrix(m,path,name):
     fn = os.path.join(path,name)
     io.mmwrite(fn, m)
 
-def plot_matrix(m,path,name):
+def plot_matrix(m,path,name,**kwargs):
     grid_kws = {"height_ratios": (.9, .05), "hspace": .3}
-    f, (ax, cbar_ax) = plt.subplots(2, gridspec_kw=grid_kws, figsize=(10,10))
+    f, (ax, cbar_ax) = plt.subplots(2, gridspec_kw=grid_kws, figsize=kwargs['figsize'])
     ax = sns.heatmap(m.toarray(), ax=ax,
         # annot=True,
         cbar_ax=cbar_ax,
@@ -86,7 +87,7 @@ def plot_matrix(m,path,name):
     plt.setp( ax.xaxis.get_majorticklabels(), rotation=90, horizontalalignment='center', fontsize=7 )
     plt.setp( ax.yaxis.get_majorticklabels(), rotation=0, horizontalalignment='center', x=1.0, fontsize=7 )
 
-    cbar_ax.set_title('cardinality (no. of edges)')
+    cbar_ax.set_title('edge multiplicity')
 
     fn = os.path.join(path,name)
     plt.savefig(fn, dpi=1200, bbox_inches='tight')
@@ -164,7 +165,7 @@ def plot_graphtool(g,colorproperty,path,name):
     fn = os.path.join(path,name)
     gt.graph_draw(g, vertex_fill_color=colorproperty, edge_color="black", output=fn)
 
-def plot_block_matrix(matrix,g,colorproperty,path,name):
+def plot_block_matrix(matrix,g,colorproperty,path,name,**kwargs):
     #### labels
     m = list(set(sorted([colorproperty[v] for v in g.vertices()]))) ### only ids of propoerties
     _labels = {i:sum([colorproperty[v]==i for v in g.vertices()]) for i in m} ### id: # of vertices
@@ -196,7 +197,7 @@ def plot_block_matrix(matrix,g,colorproperty,path,name):
             col+=1
         row += 1
 
-    size = (10,10)
+    size = kwargs['figsize']
     grid_kws = {"height_ratios": (.9, .05), "hspace": .3}
     f, (ax, cbar_ax) = plt.subplots(2, gridspec_kw=grid_kws, figsize=size)
     ax = sns.heatmap(tmp.toarray(), ax=ax,
@@ -215,7 +216,8 @@ def plot_block_matrix(matrix,g,colorproperty,path,name):
     ax.tick_params(axis='y', colors='grey')
     plt.setp( ax.xaxis.get_majorticklabels(), horizontalalignment='center' )
     plt.setp( ax.yaxis.get_majorticklabels(), rotation=270, horizontalalignment='center', x=1.02 )
-    cbar_ax.set_title('cardinality (no. of edges)')
+
+    cbar_ax.set_title('edge multiplicity', y=-5)
 
     fn = os.path.join(path,name)
     plt.savefig(fn, dpi=1200, bbox_inches='tight')
@@ -398,8 +400,8 @@ def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,
     janus.generateEvidences(kmax,klogscale)
     janus.showRank(krank)
     janus.saveEvidencesToFile()
-    janus.plotEvidences(krank,bboxx=0.8,bboxy=0.8)
-    janus.plotBayesFactors(krank,bboxx=0.75,bboxy=0.7)
+    janus.plotEvidences(krank,figsize=(9, 5),bboxx=0.60,bboxy=0.80,fontsize='x-small',ncol=2)
+    janus.plotBayesFactors(krank,figsize=(9, 5),bboxx=0.38,bboxy=1.0,fontsize='x-small',ncol=2)
     janus.saveReadme()
 
 def run_hyptrails(kmax,data,path,name,**hypotheses):
@@ -483,7 +485,7 @@ if __name__ == '__main__':
     m = create_matrix(G)
     save_matrix(m,path,'data.mtx')
     plot_graph(G,path,'graph.pdf')
-    plot_matrix(m,path,'matrix.pdf')
+    plot_matrix(m,path,'matrix.pdf',figsize=FIGSIZE)
 
     ### creating garph-tool graph and block plots
     g = create_graphtool(G,m)
@@ -491,28 +493,28 @@ if __name__ == '__main__':
     plot_graphtool(g,g.vp.age,path,'graph_age.pdf')
     plot_graphtool(g,g.vp.household,path,'graph_household.pdf')
 
-    plot_block_matrix(m,g,g.vp.sex,path,'block_gender.pdf')
-    plot_block_matrix(m,g,g.vp.age,path,'block_age.pdf')
-    plot_block_matrix(m,g,g.vp.household,path,'block_household.pdf')
+    plot_block_matrix(m,g,g.vp.sex,path,'block_gender.pdf',figsize=FIGSIZE)
+    plot_block_matrix(m,g,g.vp.age,path,'block_age.pdf',figsize=FIGSIZE)
+    plot_block_matrix(m,g,g.vp.household,path,'block_household.pdf',figsize=FIGSIZE)
 
     plot_blockmembership_dist(g,g.vp.sex,path,'hist_gender.pdf')
     plot_blockmembership_dist(g,g.vp.age,path,'hist_age.pdf')
     plot_blockmembership_dist(g,g.vp.household,path,'hist_household.pdf')
 
     h1 = build_hypothesis(G,similar_age)
-    plot_matrix(h1,path,'h1_similar_age.pdf')
+    plot_matrix(h1,path,'h1_similar_age.pdf',figsize=FIGSIZE)
     save_matrix(h1,path,'h1_similar_age.mtx')
 
     h2 = build_hypothesis(G,same_household)
-    plot_matrix(h2,path,'h2_same_household.pdf')
+    plot_matrix(h2,path,'h2_same_household.pdf',figsize=FIGSIZE)
     save_matrix(h2,path,'h2_same_household.mtx')
 
     h3 = build_hypothesis(G,same_sex)
-    plot_matrix(h3,path,'h3_same_gender.pdf')
+    plot_matrix(h3,path,'h3_same_gender.pdf',figsize=FIGSIZE)
     save_matrix(h3,path,'h3_same_gender.mtx')
 
     h4 = build_hypothesis(G,different_sex)
-    plot_matrix(h4,path,'h4_different_gender.pdf')
+    plot_matrix(h4,path,'h4_different_gender.pdf',figsize=FIGSIZE)
     save_matrix(h4,path,'h4_different_gender.mtx')
 
     run_janus(m,isdirected,isweighted,ismultigraph,dependency,algorithm,path,kmax,klogscale,krank,
