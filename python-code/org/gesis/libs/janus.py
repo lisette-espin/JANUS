@@ -156,7 +156,7 @@ class JANUS(object):
         ### Finishing Plot
         # plt.title('Evidences')
         ax.set_xlabel("concentration parameter $\kappa$")
-        ax.set_ylabel("evidence")
+        ax.set_ylabel("log(evidence)")
         plt.grid(False)
         ax.xaxis.grid(True)
 
@@ -204,7 +204,7 @@ class JANUS(object):
         ### Finishing Plot
         # plt.title('Evidences')
         ax.set_xlabel("concentration parameter $\kappa$")
-        ax.set_ylabel("Bayes factor")
+        ax.set_ylabel("log(Bayes factor)")
         plt.grid(False)
         ax.xaxis.grid(True)
 

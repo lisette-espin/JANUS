@@ -6,7 +6,6 @@ __author__ = 'espin'
 from org.gesis.libs import graph as c
 from org.gesis.libs.janus import JANUS
 from org.gesis.libs.graph import DataMatrix
-from org.gesis.libs.hypothesis import Hypothesis
 
 ################################################################################
 ### Global Dependencies
@@ -14,31 +13,13 @@ from org.gesis.libs.hypothesis import Hypothesis
 import matplotlib
 #matplotlib.use("macosx")
 from matplotlib import pyplot as plt
-from scipy.special import gammaln
 from scipy.sparse import csr_matrix, lil_matrix
-import numpy as np
-import operator
-import os
-import pickle
-import gc
 import networkx as nx
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
-import numpy as np
 import networkx as nx
-from scipy.sparse import csr_matrix
-from collections import defaultdict
 import numpy as np
-import copy
-import warnings
-from scipy.special import gammaln, gamma
-from random import randint, uniform, randrange
-from scipy.sparse import coo_matrix
+from random import randint
 import operator
-import sys
-import copy
-from random import shuffle
-from lea import *
 import os
 import sys
 import seaborn as sns; sns.set(); sns.set_style("whitegrid"); sns.set_style("ticks"); sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 2.5}); sns.set_style({'legend.frameon': True})
@@ -48,8 +29,6 @@ import seaborn as sns; sns.set(); sns.set_style("whitegrid"); sns.set_style("tic
 ### Constants
 ################################################################################
 BLOCKS = 2                                  # number of blocks
-NODES = 100                                 # number of nodes
-WALKS = 200                                  # No. of iteration to create multigraph random walker
 LINKSONLY = False
 LOW = 0.2
 HIGH = 0.8
@@ -63,10 +42,11 @@ FIGSIZE = (5,5)
 ################################################################################
 
 class RandomWalkGraph(object):
-    def __init__(self,nnodes,colors,probabilities,selfloops,isdirected,isweighted,ismultigraph,path,name):
+    def __init__(self,nnodes,walks,colors,probabilities,selfloops,isdirected,isweighted,ismultigraph,path,name):
         self.G = None
         self.data = None
         self.nnodes = nnodes
+        self.walks = walks
         self.colors = colors
         self.probabilities = probabilities
         self.selfloops = selfloops
@@ -112,8 +92,8 @@ class RandomWalkGraph(object):
     def plot_degree_rank(self):
         degree_sequence=sorted(nx.degree(self.G).values(),reverse=True)
         dmax=max(degree_sequence)
-        print(degree_sequence)
-        print(dmax)
+        # print(degree_sequence)
+        # print(dmax)
 
         plt.loglog(degree_sequence,'b-',marker='o')
         plt.title("Degree rank plot")
@@ -148,7 +128,7 @@ class RandomWalkGraph(object):
                 colors[c] = 0
             colors[c] += 1
         print('Colors Distribution: {}'.format(colors))
-        self.labels = ['' for n in range(NODES)]
+        self.labels = ['' for n in range(self.nnodes)]
         p = 0
         for c,n in colors.items():
             self.labels[p+n/2] = c
@@ -203,17 +183,17 @@ class RandomWalkGraph(object):
 
             ### Creating nodes with attributes (50% each color)
             ### 0:red, 1:blue
-            nodes = {n:int(n*BLOCKS/NODES) for n in range(NODES)}
+            nodes = {n:int(n*BLOCKS/self.nnodes) for n in range(self.nnodes)}
 
             for source,block in nodes.items():
 
                 if source not in self.G:
                     self.G.add_node(source, color=COLORVOCAB[block])
 
-                for i in range(WALKS):
+                for i in range(self.walks):
                     target = None
                     while(target == source or target is None):
-                        target = randint(0,NODES-1)
+                        target = randint(0,self.nnodes-1)
 
                     if target not in self.G:
                         self.G.add_node(target, color=COLORVOCAB[nodes[target]])
@@ -247,9 +227,6 @@ def build_hypothesis(G, criteriafn, selfloops=False):
             if i1 == i2 and not selfloops:
                 continue
 
-            # value = criteriafn(d1,d2)
-            # belief[i1,i2] = value
-
             if i2 > i1:
                 if LINKSONLY:
                     if G.has_edge(n1,n2) or G.has_edge(n2,n1):
@@ -268,7 +245,7 @@ def build_hypothesis(G, criteriafn, selfloops=False):
                     belief[i2,i1] = value
 
 
-    print('belief: {}'.format(belief.sum()))
+    #print('belief: {}'.format(belief.sum()))
     return belief
 
 def homophily(datanode1, datanode2):
@@ -334,7 +311,7 @@ def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,
     janus.generateEvidences(kmax,klogscale)
     janus.showRank(krank)
     janus.saveEvidencesToFile()
-    janus.plotEvidences(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.64,fontsize='x-small')
+    janus.plotEvidences(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.63,fontsize='x-small')
     janus.plotBayesFactors(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.63,fontsize='x-small')
     janus.saveReadme()
 
@@ -351,12 +328,17 @@ algorithm = 'randomwalker'
 kmax = 10
 klogscale = False
 krank = 10
-output = '../resources/colorgraph-{}-{}-{}nodes-kmax{}-{}walks'.format(dependency,'logscale' if klogscale else 'intscale',NODES,kmax,WALKS)
+
+nnodes = int(sys.argv[1])
+walks = 2 * nnodes
+
+output = '../resources/colorgraph-{}-{}-{}nodes-kmax{}-{}walks'.format(dependency,'logscale' if klogscale else 'intscale',nnodes,kmax,walks)
 
 if not os.path.exists(output):
         os.makedirs(output)
 
-rg = RandomWalkGraph(nnodes=NODES,
+rg = RandomWalkGraph(nnodes=nnodes,
+                     walks=walks,
                      colors=COLORDIST,
                      probabilities=COLORPROB,
                      selfloops=selfloops,
