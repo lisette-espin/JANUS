@@ -10,9 +10,7 @@ from org.gesis.libs.graph import DataMatrix
 ################################################################################
 ### Global Dependencies
 ################################################################################
-import matplotlib
-#matplotlib.use("macosx")
-from matplotlib import pyplot as plt
+import time
 from scipy.sparse import csr_matrix, lil_matrix
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -294,11 +292,14 @@ def plot_adjacency(rg, matrix,name,**kwargs):
     plt.close()
 
 def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,kmax,klogscale,krank,**hypotheses):
-
     graph = DataMatrix(isdirected,isweighted,ismultigraph,dependency,algorithm,path)
     graph.dataoriginal = data.copy()
     graph.nnodes = data.shape[0]
     graph.nedges = data.sum() / (1. if isdirected else 2.)
+    graph.saveData()
+
+
+    start_time = time.time()
     janus = JANUS(graph, path)
 
     janus.createHypothesis('data')
@@ -309,6 +310,8 @@ def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,
         janus.createHypothesis(k,v)
 
     janus.generateEvidences(kmax,klogscale)
+    print("--- %s seconds ---" % (time.time() - start_time))
+
     janus.showRank(krank)
     janus.saveEvidencesToFile()
     janus.plotEvidences(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.63,fontsize='x-small')
@@ -347,17 +350,22 @@ rg = RandomWalkGraph(nnodes=nnodes,
                      ismultigraph=ismultigraph,
                      path=output,
                      name='data')
+
 rg.createGraph()
-rg.plot_adjacency(figsize=FIGSIZE)
-rg.plot_color_distribution()
-rg.plot_degree_rank()
 
 h1 = build_hypothesis(rg.G,homophily,selfloops)
 h2 = build_hypothesis(rg.G,heterophily,selfloops)
 
-plot_adjacency(rg,h1,'homophily',figsize=FIGSIZE)
-plot_adjacency(rg,h2,'heterophily',figsize=FIGSIZE)
-
 run_janus(rg.data,isdirected,isweighted,ismultigraph,dependency,algorithm,output,kmax,klogscale,krank,
           homophily=h1,
           heterophily=h2)
+
+rg.plot_adjacency(figsize=FIGSIZE)
+rg.plot_color_distribution()
+rg.plot_degree_rank()
+
+plot_adjacency(rg,h1,'homophily',figsize=FIGSIZE)
+plot_adjacency(rg,h2,'heterophily',figsize=FIGSIZE)
+
+
+
