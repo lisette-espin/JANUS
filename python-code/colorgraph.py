@@ -1,4 +1,4 @@
-__author__ = 'espin'
+__author__ = 'lisette-espin'
 
 ################################################################################
 ### Local
@@ -6,6 +6,7 @@ __author__ = 'espin'
 from org.gesis.libs import graph as c
 from org.gesis.libs.janus import JANUS
 from org.gesis.libs.graph import DataMatrix
+from org.gesis.libs.hypothesis import Hypothesis
 
 ################################################################################
 ### Global Dependencies
@@ -129,7 +130,7 @@ class RandomWalkGraph(object):
         self.labels = ['' for n in range(self.nnodes)]
         p = 0
         for c,n in colors.items():
-            self.labels[p+n/2] = c
+            self.labels[int(p+n/2.)] = c
             p += n
 
         ### reordering edges to see blocks
@@ -291,7 +292,7 @@ def plot_adjacency(rg, matrix,name,**kwargs):
     print('- plot adjacency done!')
     plt.close()
 
-def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,kmax,klogscale,krank,**hypotheses):
+def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,kmax,klogscale,krank,tocsv,**hypotheses):
     graph = DataMatrix(isdirected,isweighted,ismultigraph,dependency,algorithm,path)
     graph.dataoriginal = data.copy()
     graph.nnodes = data.shape[0]
@@ -318,6 +319,25 @@ def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,
     janus.plotBayesFactors(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.63,fontsize='x-small')
     janus.saveReadme()
 
+    ### 5. Saving CSV (fot UCINET)
+    if tocsv:
+        save_csv(output,'colorgraph_data.csv',graph.dataoriginal)
+        save_csv(output,'colorgraph_homophily.csv',hypotheses['homophily'])
+        save_csv(output,'colorgraph_heterophily.csv',hypotheses['heterophily'])
+
+        tmp = Hypothesis('uniform',graph.dependency,graph.isdirected,output,None,graph.nnodes)
+        tmp.load()
+        save_csv(output,'colorgraph_uniform.csv',tmp.beliefnorm)
+
+        tmp = Hypothesis('selfloop',graph.dependency,graph.isdirected,output,None,graph.nnodes)
+        tmp.load()
+        save_csv(output,'colorgraph_selfloop.csv',tmp.beliefnorm)
+
+
+def save_csv(output,name,sparsematrix):
+    fn = os.path.join(output,name)
+    np.savetxt(fn, sparsematrix.toarray(), delimiter=",", fmt='%.5f')
+    print('{} CSV saved!'.format(fn))
 
 ################################################################################
 ### MAIN
@@ -331,6 +351,7 @@ algorithm = 'randomwalker'
 kmax = 10
 klogscale = False
 krank = 10
+tocsv = True
 
 nnodes = int(sys.argv[1])
 walks = 2 * nnodes
@@ -356,7 +377,7 @@ rg.createGraph()
 h1 = build_hypothesis(rg.G,homophily,selfloops)
 h2 = build_hypothesis(rg.G,heterophily,selfloops)
 
-run_janus(rg.data,isdirected,isweighted,ismultigraph,dependency,algorithm,output,kmax,klogscale,krank,
+run_janus(rg.data,isdirected,isweighted,ismultigraph,dependency,algorithm,output,kmax,klogscale,krank,tocsv,
           homophily=h1,
           heterophily=h2)
 
@@ -366,6 +387,11 @@ rg.plot_degree_rank()
 
 plot_adjacency(rg,h1,'homophily',figsize=FIGSIZE)
 plot_adjacency(rg,h2,'heterophily',figsize=FIGSIZE)
+
+
+
+
+
 
 
 

@@ -1,17 +1,16 @@
-__author__ = 'espin'
+__author__ = 'lisette-espin'
 
 ######################################################################
 # dependencies
 ######################################################################
 import matplotlib
-matplotlib.use('macosx')
 from scipy.sparse import lil_matrix, csr_matrix
 import pandas as pd
 import os
 import operator
 import numpy as np
 from scipy import io
-import graph_tool.all as gt
+#import graph_tool.all as gt
 import networkx as nx
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set(); sns.set_style("whitegrid"); sns.set_style("ticks"); sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 2.5}); sns.set_style({'legend.frameon': True})
@@ -19,7 +18,7 @@ import seaborn as sns; sns.set(); sns.set_style("whitegrid"); sns.set_style("tic
 from org.gesis.libs import graph as c
 from org.gesis.libs.janus import JANUS
 from org.gesis.libs.graph import DataMatrix
-from org.gesis.libs.hyptrails import HypTrails
+from org.gesis.libs.hypothesis import Hypothesis
 
 ######################################################################
 # constants
@@ -382,13 +381,13 @@ def hyp_noise(matrix, noise):
 # janus
 ######################################################################
 
-def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,kmax,klogscale,krank,**hypotheses):
+def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,output,kmax,klogscale,krank,tocsv,**hypotheses):
 
-    graph = DataMatrix(isdirected,isweighted,ismultigraph,dependency,algorithm,path)
+    graph = DataMatrix(isdirected,isweighted,ismultigraph,dependency,algorithm,output)
     graph.dataoriginal = data
     graph.nnodes = data.shape[0]
     graph.nedges = data.sum() / (1 if isdirected else 2)
-    janus = JANUS(graph, path)
+    janus = JANUS(graph, output)
 
     janus.createHypothesis('data')
     janus.createHypothesis('uniform')
@@ -404,61 +403,23 @@ def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,
     janus.plotBayesFactors(krank,figsize=(9, 5),bboxx=0.38,bboxy=1.0,fontsize='x-small',ncol=2)
     janus.saveReadme()
 
-def run_hyptrails(kmax,data,path,name,**hypotheses):
-    ht = HypTrails()
-    #ht.fit(sequences)
+    ### 5. Saving CSV (fot UCINET)
+    if tocsv:
+        save_csv(output,'sociopatterns_data.csv',graph.dataoriginal)
 
-    ht.state_count = data.shape[0]
-    ht.transitions = data
-    evidences = {}
+        save_csv(output,'sociopatterns_similar_age.csv',hypotheses['similar_age'])
+        save_csv(output,'sociopatterns_same_household.csv',hypotheses['same_household'])
+        save_csv(output,'sociopatterns_same_gender.csv',hypotheses['same_gender'])
+        save_csv(output,'sociopatterns_different_gender.csv',hypotheses['different_gender'])
 
-    hyp_data = ht.transitions.copy()
-    hyp_uniform = csr_matrix(data.shape)
+        tmp = Hypothesis('uniform',graph.dependency,graph.isdirected,output,None,graph.nnodes)
+        tmp.load()
+        save_csv(output,'sociopatterns_uniform.csv',tmp.beliefnorm)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-
-    evidences['data'] = hyptrails_evidences(kmax, ht, hyp_data, ax,'data','o','--')
-    evidences['uniform'] = hyptrails_evidences(kmax, ht, hyp_uniform, ax,'uniform','*','-')
-
-    for k,m in hypotheses.items():
-        evidences[k] = hyptrails_evidences(kmax, ht, m, ax,k,'x','-')
-
-    rank = {k:e[len(e)-1] for k,e in evidences.items()}
-    rank_sorted = sorted(rank.items(), key=operator.itemgetter(1), reverse=True)
-    print('========= RANKING ==========')
-    for ke in rank_sorted:
-        print('- {} ({})'.format(ke[0],ke[1]))
-
-    # Further plotting
-    ax.set_xlabel("hypothesis weighting factor k")
-    ax.set_ylabel("marginal likelihood / evidence (log)")
-
-    handles, labels = ax.get_legend_handles_labels()
-    t = [(l,h,rank[l]) for l,h in zip(labels, handles)]
-    labels, handles, evidences = zip(*sorted(t,key=lambda t: t[2],reverse=True))
-    legend = ax.legend(handles, labels, loc=2, bbox_to_anchor=(1.05, 1), borderaxespad=0.) # outside of the figure
-    # legend = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.27,0.5)) # inside
-    # plt.legend(bbox_to_anchor=(1,0.8),loc="upper right", handlelength = 3)
-
-    plt.grid(False)
-    ax.xaxis.grid(True)
-
-    fn = os.path.join(path,name)
-    plt.savefig(fn)
-    plt.close()
-
-def hyptrails_evidences(kmax, ht, hypothesis, ax,name,marker,linestyle):
-    evidences = []
-    # r = np.sort(np.unique(np.append(np.logspace(-1,kmax,kmax+2),1)))
-    r = range(0,kmax+1)
-    for k in r:
-        if k == 0:
-            evidences.append(ht.evidence(csr_matrix((ht.state_count,ht.state_count)),k))
-        else:
-            evidences.append(ht.evidence(hypothesis,k))
-    ax.plot(range(len(evidences)), evidences, marker=marker, clip_on = False, label=name, linestyle=linestyle)
-    return evidences
+def save_csv(output,name,sparsematrix):
+    fn = os.path.join(output,name)
+    np.savetxt(fn, sparsematrix.toarray(), delimiter=",", fmt='%.5f')
+    print('{} CSV saved!'.format(fn))
 
 ######################################################################
 # main
@@ -472,6 +433,7 @@ if __name__ == '__main__':
     kmax = 10
     klogscale=False
     krank = 10
+    tocsv=True
     path = '../resources/sociopatterns-{}-{}-{}-{}/'.format(dependency,HIGH,LOW,'linksonly' if LINKSONLY else 'all')
 
     if not os.path.exists(path):
@@ -488,18 +450,21 @@ if __name__ == '__main__':
     plot_matrix(m,path,'matrix.pdf',figsize=FIGSIZE)
 
     ### creating garph-tool graph and block plots
-    g = create_graphtool(G,m)
-    plot_graphtool(g,g.vp.sex,path,'graph_gender.pdf')
-    plot_graphtool(g,g.vp.age,path,'graph_age.pdf')
-    plot_graphtool(g,g.vp.household,path,'graph_household.pdf')
-
-    plot_block_matrix(m,g,g.vp.sex,path,'block_gender.pdf',figsize=FIGSIZE)
-    plot_block_matrix(m,g,g.vp.age,path,'block_age.pdf',figsize=FIGSIZE)
-    plot_block_matrix(m,g,g.vp.household,path,'block_household.pdf',figsize=FIGSIZE)
-
-    plot_blockmembership_dist(g,g.vp.sex,path,'hist_gender.pdf')
-    plot_blockmembership_dist(g,g.vp.age,path,'hist_age.pdf')
-    plot_blockmembership_dist(g,g.vp.household,path,'hist_household.pdf')
+    ### if you want to use the following code, make sure you have installed graph_tools
+    ### and proceed to uncomment the following code and "import graph_tool.all as gt)"
+    ### on the dependencies declarations (above)
+    # g = create_graphtool(G,m)
+    # plot_graphtool(g,g.vp.sex,path,'graph_gender.pdf')
+    # plot_graphtool(g,g.vp.age,path,'graph_age.pdf')
+    # plot_graphtool(g,g.vp.household,path,'graph_household.pdf')
+    #
+    # plot_block_matrix(m,g,g.vp.sex,path,'block_gender.pdf',figsize=FIGSIZE)
+    # plot_block_matrix(m,g,g.vp.age,path,'block_age.pdf',figsize=FIGSIZE)
+    # plot_block_matrix(m,g,g.vp.household,path,'block_household.pdf',figsize=FIGSIZE)
+    #
+    # plot_blockmembership_dist(g,g.vp.sex,path,'hist_gender.pdf')
+    # plot_blockmembership_dist(g,g.vp.age,path,'hist_age.pdf')
+    # plot_blockmembership_dist(g,g.vp.household,path,'hist_household.pdf')
 
     h1 = build_hypothesis(G,similar_age)
     plot_matrix(h1,path,'h1_similar_age.pdf',figsize=FIGSIZE)
@@ -517,7 +482,7 @@ if __name__ == '__main__':
     plot_matrix(h4,path,'h4_different_gender.pdf',figsize=FIGSIZE)
     save_matrix(h4,path,'h4_different_gender.mtx')
 
-    run_janus(m,isdirected,isweighted,ismultigraph,dependency,algorithm,path,kmax,klogscale,krank,
+    run_janus(m,isdirected,isweighted,ismultigraph,dependency,algorithm,path,kmax,klogscale,krank,tocsv,
               similar_age=h1,same_household=h2,same_gender=h3,
               different_gender=h4)
 

@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 import networkx as nx
 from scipy.sparse import csr_matrix, lil_matrix
 import os
-import graph_tool.all as gt
+#import graph_tool.all as gt
 import numpy as np
 from scipy import io
 import pandas as pd

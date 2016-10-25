@@ -20,6 +20,7 @@ import operator
 import os
 import pickle
 import gc
+import sys
 
 ################################################################################
 ### CONSTANTS
@@ -287,10 +288,17 @@ class JANUS(object):
     def _writeFile(self, name, ext, obj):
         fn = self.getFilePathName(name,ext)
 
-        with open(fn, 'wb') as f:
-            if ext == 'txt':
+        if ext == 'txt':
+            with open(fn, 'w') as f:
                 f.write(obj)
-            elif ext == 'p':
-                pickle.dump(obj, f)
+
+        else:
+            with open(fn, 'wb') as f:
+
+                if ext == 'p':
+                    pickle.dump(obj, f)
+                else:
+                    print('ERROR janus.py _writeFile')
+                    sys.exit(0)
 
         print('FILE SAVED: {}'.format(fn))

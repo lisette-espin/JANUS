@@ -1,8 +1,8 @@
 from __future__ import division, print_function, absolute_import
-__author__ = 'espin'
+__author__ = 'lisette-espin'
 
 import matplotlib
-matplotlib.use('macosx')
+#matplotlib.use('macosx')
 
 ################################################################################
 ### Local Dependencies
@@ -10,6 +10,7 @@ matplotlib.use('macosx')
 from org.gesis.libs import graph as c
 from org.gesis.libs.graph import DataMatrix
 from org.gesis.libs.janus import JANUS
+from org.gesis.libs.hypothesis import Hypothesis
 
 ################################################################################
 ### Global Dependencies
@@ -27,11 +28,12 @@ import seaborn as sns; sns.set(); sns.set_style("whitegrid"); sns.set_style("tic
 ################################################################################
 ALGORITHM = 'publications'
 DEL=','
+
 ################################################################################
 ### Functions
 ################################################################################
 
-def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank):
+def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank,tocsv=False):
 
     ### 1. create data
     graph = DataMatrix(isdirected, isweighted, ismultigraph, dependency, algorithm, output)
@@ -96,6 +98,23 @@ def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kma
     janus.plotBayesFactors(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.5,fontsize='x-small')
     janus.saveReadme(start,stop)
 
+    # ### 5. Saving CSV (fot UCINET)
+    if tocsv:
+        save_csv(output,'coauthorship_data.csv',graph.dataoriginal)
+        save_csv(output,'coauthorship_b1_same_country.csv',m1)
+        save_csv(output,'coauthorship_b2_same_gender.csv',m2)
+        save_csv(output,'coauthorship_b3_hierarchy.csv',m3)
+        save_csv(output,'coauthorship_b4_popularity.csv',m4)
+
+        tmp = Hypothesis('uniform',graph.dependency,graph.isdirected,output,None,graph.nnodes)
+        tmp.load()
+        save_csv(output,'coauthorship_uniform.csv',tmp.beliefnorm)
+
+def save_csv(output,name,sparsematrix):
+    fn = os.path.join(output,name)
+    np.savetxt(fn, sparsematrix.toarray(), delimiter=",", fmt='%.5f')
+    print('{} CSV saved!'.format(fn))
+
 def getMatrix(datasets,output):
     data = None
     for dataset in datasets:
@@ -145,8 +164,10 @@ if __name__ == '__main__':
     krank = 10
     algorithm = ALGORITHM
     output = '../resources/coauthorship-{}'.format(dependency)
+    tocsv = True
 
     if not os.path.exists(output):
         os.makedirs(output)
 
-    run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank)
+    run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kmax,klogscale,krank,tocsv)
+
