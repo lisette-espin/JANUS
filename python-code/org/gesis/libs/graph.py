@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-__author__ = 'espin'
+__author__ = 'lisette-espin'
 
 #########################################################################################################
 ### Global Dependencies
@@ -13,8 +13,6 @@ import os
 #import graph_tool.all as gt
 import numpy as np
 from scipy import io
-import pandas as pd
-import operator
 import seaborn as sns; sns.set(); sns.set_style("whitegrid"); sns.set_style("ticks"); sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 2.5}); sns.set_style({'legend.frameon': True})
 import sys
 
@@ -96,18 +94,8 @@ class Graph(object):
     # SET DATA GRAPH
     ######################################################
     def extractData(self, G=None):
+        ### todo: check for directed and undirected
         return
-        # if self.dependency == GLOBAL:
-        #     if self.isdirected:
-        #         self.data = csr_matrix(self.data.toarray().flatten())
-        #     else:
-        #         print(self.data.toarray())
-        #         print(self.data.sum())
-        #         tmp = np.tril(self.data.toarray(), 0)
-        #         print(tmp)
-        #         print(tmp.sum())
-        #         # raw_input('data...')
-        #         self.data = csr_matrix(np.triu(self.data.toarray(), 0).flatten())
 
     def saveAll(self, G):
         self.showInfo(G)
@@ -121,7 +109,7 @@ class Graph(object):
 
     def loadData(self):
         fn = self.getFileNameAdjacency()
-        self.dataoriginal = csr_matrix(io.mmread(fn))
+        self.dataoriginal = csr_matrix(io.mmread(fn)).astype(np.float)
         self.nnodes = self.dataoriginal.shape[1]
         self.nedges = int(self.dataoriginal.sum())
         print('- data loaded')
@@ -149,7 +137,6 @@ class Graph(object):
         if degree_sequence is not None:
             fn = self.getFileNamePlot('degree')
             plt.plot(degree_sequence,'b-',marker='o')
-            # n, bins, patches = plt.hist(degree_sequence, 5, facecolor='green', alpha=0.75)
             plt.title("Degree rank plot")
             plt.ylabel("degree")
             plt.xlabel("node instances")
@@ -293,8 +280,6 @@ class GraphTool(Graph):
                 degree = []
                 for v in G.vertices():
                     d = v.out_degree()
-                    # G.vp.blocks[v]
-                    # print('in:{}, out:{}, all:{}'.format(v.in_degree(), v.out_degree(), sum([1 for e in v.all_edges()])))
                     degree.append(d)
                 #degree_sequence = sorted(degree, reverse=False)
                 super(GraphTool, self).plotDegreeDistribution(degree)
@@ -305,7 +290,6 @@ class GraphTool(Graph):
                 try:
                     weight_sequence = []
                     for edge in G.edges():
-                        #weight_sequence.append(self._args['edge_attributes']['weight'][edge.source()])
                         weight_sequence.append(G.ep.weights[edge.source()])
                     weight_sequence = sorted(weight_sequence ,reverse=True)
                     super(GraphTool, self).plotWeightDistribution(weight_sequence)
@@ -333,7 +317,6 @@ class GraphTool(Graph):
         # pos = gt.arf_layout(G, max_iter=0)
         state.draw(vertex_shape=state.get_blocks(),output=self.getFileNamePlot('graph-blocks-mdl')) #pos=pos,
         e = state.get_matrix()
-        # print(e.todense())
         state = gt.minimize_nested_blockmodel_dl(G, deg_corr=True)
         state.draw(output=self.getFileNamePlot('graph-nested-mdl'))
 

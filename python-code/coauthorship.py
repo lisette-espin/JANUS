@@ -1,9 +1,6 @@
 from __future__ import division, print_function, absolute_import
 __author__ = 'lisette-espin'
 
-import matplotlib
-#matplotlib.use('macosx')
-
 ################################################################################
 ### Local Dependencies
 ################################################################################
@@ -26,7 +23,7 @@ import seaborn as sns; sns.set(); sns.set_style("whitegrid"); sns.set_style("tic
 ################################################################################
 ### CONSTANTS
 ################################################################################
-ALGORITHM = 'publications'
+ALGORITHM = 'coauthorship'
 DEL=','
 
 ################################################################################
@@ -52,7 +49,7 @@ def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kma
     ### 3. create hypotheses
     janus.createHypothesis('data')
     janus.createHypothesis('uniform')
-    # janus.createHypothesis('selfloop')
+    janus.createHypothesis('selfloop')
 
     m1 = getMatrix(['same-country'],output)
     janus.createHypothesis('B1: same-country',m1)
@@ -98,17 +95,16 @@ def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kma
     janus.plotBayesFactors(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.5,fontsize='x-small')
     janus.saveReadme(start,stop)
 
-    # ### 5. Saving CSV (fot UCINET)
+    # ### 5. Saving CSV (dense matrix)
     if tocsv:
-        save_csv(output,'coauthorship_data.csv',graph.dataoriginal)
-        save_csv(output,'coauthorship_b1_same_country.csv',m1)
-        save_csv(output,'coauthorship_b2_same_gender.csv',m2)
-        save_csv(output,'coauthorship_b3_hierarchy.csv',m3)
-        save_csv(output,'coauthorship_b4_popularity.csv',m4)
+        save_csv(output,'{}_data.csv'.format(algorithm),graph.dataoriginal)
+        save_csv(output,'{}_b1_same_country.csv'.format(algorithm),m1)
+        save_csv(output,'{}_b2_same_gender.csv'.format(algorithm),m2)
+        save_csv(output,'{}_b3_hierarchy.csv'.format(algorithm),m3)
+        save_csv(output,'{}_b4_popularity.csv'.format(algorithm),m4)
 
-        tmp = Hypothesis('uniform',graph.dependency,graph.isdirected,output,None,graph.nnodes)
-        tmp.load()
-        save_csv(output,'coauthorship_uniform.csv',tmp.beliefnorm)
+        save_csv(output,'{}_uniform.csv'.format(algorithm),np.zeros((graph.nnodes,graph.nnodes)))
+        save_csv(output,'{}_selfloop.csv'.format(algorithm),np.diagflat(np.zeros(graph.nnodes)+1))
 
 def save_csv(output,name,sparsematrix):
     fn = os.path.join(output,name)
@@ -158,13 +154,13 @@ if __name__ == '__main__':
     isdirected = False
     isweighted = False
     ismultigraph = True
-    dependency = c.LOCAL
+    dependency = c.GLOBAL
     kmax = 10
     klogscale = False
     krank = 10
     algorithm = ALGORITHM
-    output = '../resources/coauthorship-{}'.format(dependency)
-    tocsv = True
+    output = '../resources/{}-{}'.format(algorithm,dependency)
+    tocsv = False
 
     if not os.path.exists(output):
         os.makedirs(output)

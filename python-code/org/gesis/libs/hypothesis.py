@@ -1,5 +1,5 @@
 from __future__ import division, absolute_import, print_function
-__author__ = 'espin'
+__author__ = 'lisette-espin'
 
 ################################################################################
 ### Local Dependencies
@@ -10,7 +10,7 @@ from org.gesis.libs import graph as c
 ### Global Dependencies
 ################################################################################
 from sklearn.preprocessing import normalize
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_matrix
 from scipy import io
 import numpy as np
 import os
@@ -41,6 +41,7 @@ class Hypothesis(object):
         self.dependency = dependency
         self.outout = output
         self.isdirected = isdirected
+        self.belief = belief
         self.beliefnorm = None
         self.nnodes = -1 if nnodes is None and belief is None else nnodes if nnodes is not None else belief.shape[0]
         self._normalize(belief)
@@ -50,7 +51,7 @@ class Hypothesis(object):
     # ELICITING PRIOR
     ######################################################
     def elicit_prior(self, k, copy=True):
-        kappa =  self.nnodes * k
+        kappa =  self.nnodes * (1.0 if self.dependency == c.LOCAL else self.nnodes) * k
         if k in [0.,0.1]:
             prior = csr_matrix(self.beliefnorm.shape, dtype=np.float64)
         else:
@@ -76,8 +77,7 @@ class Hypothesis(object):
                 if self.isdirected:
                     beliefnew = csr_matrix(belief.toarray().flatten())
                 else:
-                    # belief = csr_matrix(np.triu(belief.toarray(), 0).flatten())
-                    beliefnew = csr_matrix(belief[np.triu_indices(self.nnodes)])
+                    beliefnew = csr_matrix(belief[np.triu_indices(self.nnodes)]) ### already flattened
 
                 print('shape after triu: {}'.format(beliefnew.shape))
             else:
@@ -109,4 +109,6 @@ class Hypothesis(object):
         return os.path.exists(self.getFileName())
 
     def setBelief(self, belief, copy=True):
+        self.belief = belief
         self._normalize(belief, copy)
+        return belief

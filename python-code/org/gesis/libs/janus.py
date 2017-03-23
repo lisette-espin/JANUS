@@ -1,5 +1,5 @@
 from __future__ import division, absolute_import, print_function
-__author__ = 'espin'
+__author__ = 'lisette-espin'
 
 ################################################################################
 ### Local
@@ -10,8 +10,6 @@ from org.gesis.libs.hypothesis import Hypothesis
 ################################################################################
 ### Global Dependencies
 ################################################################################
-import matplotlib
-#matplotlib.use("macosx")
 from matplotlib import pyplot as plt
 from scipy.special import gammaln
 from scipy.sparse import csr_matrix, lil_matrix
@@ -59,38 +57,41 @@ class JANUS(object):
     def verify_model(self):
         if self.graph.dataoriginal is not None:
             if self.graph.dependency == c.GLOBAL:
+                print('========= is global ==========')
                 if self.graph.isdirected:
-                    self.graph.data = csr_matrix(self.graph.dataoriginal.toarray())
+                    self.graph.data = csr_matrix(self.graph.dataoriginal.toarray().flatten())
                 else:
-                    # self.graph.data = csr_matrix(np.triu(self.graph.dataoriginal.toarray(), 0).flatten())
                     self.graph.data = csr_matrix(self.graph.dataoriginal[np.triu_indices(self.graph.nnodes)])
 
                     print('shape after: {}'.format(self.graph.data.shape))
 
             elif self.graph.dependency == c.LOCAL:
+                print('========= is local ==========')
                 self.graph.data = self.graph.dataoriginal
 
     def createHypothesis(self, name, belief=None, copy=False):
         h = Hypothesis(name,self.graph.dependency,self.graph.isdirected,self.output,None,self.graph.nnodes)
+        _h = belief
 
         if not h.exists():
             if name == 'data':
-                h.setBelief(self.graph.dataoriginal,True)
+                _h = h.setBelief(self.graph.dataoriginal,True)
             elif name == 'uniform':
-                h.setBelief(csr_matrix((self.graph.nnodes,self.graph.nnodes)),copy)
+                _h = h.setBelief(csr_matrix((self.graph.nnodes,self.graph.nnodes)),copy)
             elif name == 'selfloop':
-                h.setBelief(self._selfloopBelief(),copy)
+                _h = h.setBelief(self._selfloopBelief(),copy)
             else:
-                h.setBelief(belief,copy)
+                _h = h.setBelief(belief,copy)
             h.save()
         self.hypotheses.append(name)
         del(h)
+        return _h
 
     def _selfloopBelief(self):
         nnodes = self.graph.nnodes
         tmp = lil_matrix((nnodes,nnodes))
         tmp.setdiag(1.)
-        return tmp.tocsr() #csr_matrix(tmp.toarray().flatten())
+        return tmp.tocsr()
 
     ######################################################
     # 3. COMPUTE EVIDENCES
@@ -129,10 +130,14 @@ class JANUS(object):
 
     def _categorical_dirichlet_evidence(self, prior,k):
         protoprior = 1.0 + (k if prior.size == 0 else 0.)
-        uniform = self.graph.nnodes * protoprior
+        uniform = self.graph.nnodes * (1.0 if self.graph.dependency == c.LOCAL else self.graph.nnodes) * protoprior
         evidence = 0
         evidence += gammaln(prior.sum(axis=1) + uniform).sum()
         evidence -= gammaln(self.graph.data.sum(axis=1) + prior.sum(axis=1) + uniform).sum()
+
+        print('shape graph.data: {} | size: {}'.format(self.graph.data.shape,self.graph.data.size))
+        print('shape prior: {} | size:{}'.format(prior.shape,prior.size))
+
         evidence += gammaln((self.graph.data + prior).data + protoprior).sum()
         evidence -= gammaln(prior.data + protoprior).sum() + ( (self.graph.data.size - prior.size) * gammaln(protoprior))
         ### the uniform is added since it is the starting point for the first value of k
@@ -161,6 +166,9 @@ class JANUS(object):
         plt.grid(False)
         ax.xaxis.grid(True)
 
+        if self.graph.dependency == c.GLOBAL:
+            ax.ticklabel_format(axis='x', style='sci', scilimits=(0,0))
+
         ### Shrink current axis by 20%
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
@@ -181,11 +189,11 @@ class JANUS(object):
     def _addEvidenceToPlot(self,evidencesobj, ax, label, counter):
         sortede = sorted(evidencesobj.items(), key=operator.itemgetter(0),reverse=False)
         yy = [e[1] for e in sortede]
-        xx = [e[0] * self.graph.nnodes for e in sortede]
+        xx = [float(e[0]) * (self.graph.nnodes * (1 if self.graph.dependency == c.LOCAL else self.graph.nnodes) ) for e in sortede]
         if self._klogscale:
-            ax.semilogx(xx, yy, marker=MARKERS[counter % len(MARKERS)], label=label) #marker='*',
+            ax.semilogx(xx, yy, marker=MARKERS[counter % len(MARKERS)], label=label)
         else:
-            ax.plot(xx, yy, marker=MARKERS[counter % len(MARKERS)], label=label) #marker='*',
+            ax.plot(xx, yy, marker=MARKERS[counter % len(MARKERS)], label=label)
         return xx,yy
 
     def plotBayesFactors(self, krank=None, **kwargs):
@@ -201,6 +209,8 @@ class JANUS(object):
             ### Adding hyoptheses in plot
             xx,yy = self._addEvidenceToPlot(tmp,ax,hname,counter)
             counter += 1
+
+        ax.ticklabel_format(axis='x', style='sci', scilimits=(0,0))
 
         ### Finishing Plot
         # plt.title('Evidences')

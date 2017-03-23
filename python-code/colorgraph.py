@@ -6,21 +6,21 @@ __author__ = 'lisette-espin'
 from org.gesis.libs import graph as c
 from org.gesis.libs.janus import JANUS
 from org.gesis.libs.graph import DataMatrix
-from org.gesis.libs.hypothesis import Hypothesis
 
 ################################################################################
 ### Global Dependencies
 ################################################################################
 import time
 from scipy.sparse import csr_matrix, lil_matrix
-import networkx as nx
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from scipy import io
 from random import randint
 import operator
 import os
 import sys
+import pickle
 import seaborn as sns; sns.set(); sns.set_style("whitegrid"); sns.set_style("ticks"); sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 2.5}); sns.set_style({'legend.frameon': True})
 
 
@@ -90,9 +90,6 @@ class RandomWalkGraph(object):
 
     def plot_degree_rank(self):
         degree_sequence=sorted(nx.degree(self.G).values(),reverse=True)
-        dmax=max(degree_sequence)
-        # print(degree_sequence)
-        # print(dmax)
 
         plt.loglog(degree_sequence,'b-',marker='o')
         plt.title("Degree rank plot")
@@ -171,81 +168,140 @@ class RandomWalkGraph(object):
         print('- plot adjacency done!')
         plt.close()
 
+    def saveGraph(self, fn):
+        fn = os.path.join(self.path,fn)
+        nx.write_gpickle(self.G, fn)
+
+    def saveCSV(self,fn):
+        fn = fn.replace('.gpickle','.csv')
+        fn = os.path.join(self.path,fn)
+        m = nx.adjacency_matrix(self.G)
+        np.savetxt(fn, m.toarray(), delimiter=',', fmt='%.2f')
+
+    def loadGraph(self, fn):
+        fn = os.path.join(self.path,fn)
+        self.G = nx.read_gpickle(fn)
+
+    def fileExists(self,fn):
+        fn = os.path.join(self.path,fn)
+        return os.path.exists(fn)
+
+    def saveColorDistribution(self):
+        fn = 'color_distribution.p'
+        fn = os.path.join(self.path,fn)
+        with open(fn,'w') as f:
+            pickle.dump(self.colordistribution,f)
+
+    def loadColorDistribution(self):
+        fn = 'color_distribution.p'
+        fn = os.path.join(self.path,fn)
+        with open(fn,'r') as f:
+            self.colordistribution = pickle.load(f)
+
     def createGraph(self):
         if self.validate():
 
-            ### Initializing graph
-            if self.ismultigraph:
-                self.G = nx.MultiDiGraph() if self.isdirected else nx.MultiGraph()
+            fn = '2color_graph.gpickle'
+            if self.fileExists(fn):
+                self.loadGraph(fn)
+                self.loadColorDistribution()
             else:
-                self.G = nx.DiGraph() if self.isdirected else nx.Graph()
+                ### Initializing graph
+                if self.ismultigraph:
+                    self.G = nx.MultiDiGraph() if self.isdirected else nx.MultiGraph()
+                else:
+                    self.G = nx.DiGraph() if self.isdirected else nx.Graph()
 
-            ### Creating nodes with attributes (50% each color)
-            ### 0:red, 1:blue
-            nodes = {n:int(n*BLOCKS/self.nnodes) for n in range(self.nnodes)}
+                ### Creating nodes with attributes (50% each color)
+                ### 0:red, 1:blue
+                nodes = {n:int(n*BLOCKS/self.nnodes) for n in range(self.nnodes)}
 
-            for source,block in nodes.items():
+                for source,block in nodes.items():
 
-                if source not in self.G:
-                    self.G.add_node(source, color=COLORVOCAB[block])
+                    if source not in self.G:
+                        self.G.add_node(source, color=COLORVOCAB[block])
 
-                for i in range(self.walks):
-                    target = None
-                    while(target == source or target is None):
-                        target = randint(0,self.nnodes-1)
+                    for i in range(self.walks):
+                        target = None
+                        while(target == source or target is None):
+                            target = randint(0,self.nnodes-1)
 
-                    if target not in self.G:
-                        self.G.add_node(target, color=COLORVOCAB[nodes[target]])
+                        if target not in self.G:
+                            self.G.add_node(target, color=COLORVOCAB[nodes[target]])
 
-                    prob = COLORPROB[COLORVOCAB[block]][COLORVOCAB[nodes[target]]]
-                    draw = np.random.binomial(n=1,p=prob,size=1)
+                        prob = COLORPROB[COLORVOCAB[block]][COLORVOCAB[nodes[target]]]
+                        draw = np.random.binomial(n=1,p=prob,size=1)
 
-                    if draw:
-                        self.G.add_edge(source, target, weight=1.)
-                        if COLORVOCAB[block] not in self.colordistribution:
-                            self.colordistribution[COLORVOCAB[block]] = {}
-                        if COLORVOCAB[nodes[target]] not in self.colordistribution[COLORVOCAB[block]]:
-                            self.colordistribution[COLORVOCAB[block]][COLORVOCAB[nodes[target]]] = 0
-                        self.colordistribution[COLORVOCAB[block]][COLORVOCAB[nodes[target]]] += 1
+                        if draw:
+                            self.G.add_edge(source, target, weight=1.)
+                            if COLORVOCAB[block] not in self.colordistribution:
+                                self.colordistribution[COLORVOCAB[block]] = {}
+                            if COLORVOCAB[nodes[target]] not in self.colordistribution[COLORVOCAB[block]]:
+                                self.colordistribution[COLORVOCAB[block]][COLORVOCAB[nodes[target]]] = 0
+                            self.colordistribution[COLORVOCAB[block]][COLORVOCAB[nodes[target]]] += 1
 
+                self.saveGraph(fn)
+                self.saveCSV(fn)
+                self.saveColorDistribution()
 
+            self.saveCSV(fn)
             print(nx.info(self.G))
             self.data = nx.adjacency_matrix(self.G)
 
 ################################################################################
 ### Hypothesis
 ################################################################################
-def build_hypothesis(G, criteriafn, selfloops=False):
-    nnodes = nx.number_of_nodes(G)
-    belief = lil_matrix((nnodes,nnodes))
-    for n1,d1 in G.nodes_iter(data=True):
-        for n2,d2 in G.nodes_iter(data=True):
-            i1 = G.nodes().index(n1)
-            i2 = G.nodes().index(n2)
 
-            if i1 == i2 and not selfloops:
-                continue
+def file_exists(rg,fn):
+    fn = os.path.join(rg.path,fn)
+    return os.path.exists(fn)
 
-            if i2 > i1:
-                if LINKSONLY:
-                    if G.has_edge(n1,n2) or G.has_edge(n2,n1):
+def load_matrix(rg,fn):
+    fn = os.path.join(rg.path,fn)
+    return csr_matrix(io.mmread(fn))
+
+def save_matrix(m,rg,fn):
+    fn = os.path.join(rg.path,fn)
+    io.mmwrite(fn, m)
+
+def build_hypothesis(rg, criteriafn, selfloops=False):
+
+    fn = '{}.mtx'.format(criteriafn.__name__)
+    if file_exists(rg,fn):
+        m = load_matrix(rg,fn)
+        print('sum hypothesis {}: {}'.format(criteriafn.__name__,m.sum()))
+    else:
+        nnodes = nx.number_of_nodes(rg.G)
+        m = lil_matrix((nnodes,nnodes))
+        for n1,d1 in rg.G.nodes_iter(data=True):
+            for n2,d2 in rg.G.nodes_iter(data=True):
+                i1 = rg.G.nodes().index(n1)
+                i2 = rg.G.nodes().index(n2)
+
+                if i1 == i2 and not selfloops:
+                    continue
+
+                if i2 > i1:
+                    if LINKSONLY:
+                        if rg.G.has_edge(n1,n2) or rg.G.has_edge(n2,n1):
+                            value = criteriafn(d1,d2)
+                            m[i1,i2] = value
+
+                            if nx.is_directed(rg.G):
+                                value = criteriafn(d2,d1)
+                            m[i2,i1] = value
+                    else:
                         value = criteriafn(d1,d2)
-                        belief[i1,i2] = value
+                        m[i1,i2] = value
 
-                        if nx.is_directed(G):
+                        if nx.is_directed(rg.G):
                             value = criteriafn(d2,d1)
-                        belief[i2,i1] = value
-                else:
-                    value = criteriafn(d1,d2)
-                    belief[i1,i2] = value
+                        m[i2,i1] = value
 
-                    if nx.is_directed(G):
-                        value = criteriafn(d2,d1)
-                    belief[i2,i1] = value
+        save_matrix(m,rg,fn)
+        print('sum hypothesis {}: {}'.format(criteriafn.__name__,m.sum()))
 
-
-    #print('belief: {}'.format(belief.sum()))
-    return belief
+    return m
 
 def homophily(datanode1, datanode2):
     return HIGH if datanode1['color'] == datanode2['color'] else LOW
@@ -292,13 +348,12 @@ def plot_adjacency(rg, matrix,name,**kwargs):
     print('- plot adjacency done!')
     plt.close()
 
-def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,kmax,klogscale,krank,tocsv,**hypotheses):
+def run_janus(rg,isdirected,isweighted,ismultigraph,dependency,algorithm,path,kmax,klogscale,krank,tocsv,**hypotheses):
     graph = DataMatrix(isdirected,isweighted,ismultigraph,dependency,algorithm,path)
-    graph.dataoriginal = data.copy()
-    graph.nnodes = data.shape[0]
-    graph.nedges = data.sum() / (1. if isdirected else 2.)
+    graph.dataoriginal = rg.data.copy()
+    graph.nnodes = rg.data.shape[0]
+    graph.nedges = rg.data.sum() / (1. if isdirected else 2.)
     graph.saveData()
-
 
     start_time = time.time()
     janus = JANUS(graph, path)
@@ -319,23 +374,18 @@ def run_janus(data,isdirected,isweighted,ismultigraph,dependency,algorithm,path,
     janus.plotBayesFactors(krank,figsize=(9, 5),bboxx=0.8,bboxy=0.63,fontsize='x-small')
     janus.saveReadme()
 
-    ### 5. Saving CSV (fot UCINET)
+    # ### Saving CSV (dense matrix)
     if tocsv:
-        save_csv(output,'colorgraph_data.csv',graph.dataoriginal)
-        save_csv(output,'colorgraph_homophily.csv',hypotheses['homophily'])
-        save_csv(output,'colorgraph_heterophily.csv',hypotheses['heterophily'])
+        save_csv(graph.dataoriginal,rg,'{}_data.csv'.format(algorithm))
+        for h,m in hypotheses.items():
+            save_csv(m,rg,'{}_{}.csv'.format(algorithm,h))
 
-        tmp = Hypothesis('uniform',graph.dependency,graph.isdirected,output,None,graph.nnodes)
-        tmp.load()
-        save_csv(output,'colorgraph_uniform.csv',tmp.beliefnorm)
-
-        tmp = Hypothesis('selfloop',graph.dependency,graph.isdirected,output,None,graph.nnodes)
-        tmp.load()
-        save_csv(output,'colorgraph_selfloop.csv',tmp.beliefnorm)
+        save_csv(np.zeros((graph.nnodes,graph.nnodes)),rg,'{}_uniform.csv'.format(algorithm))
+        save_csv(np.diagflat(np.zeros(graph.nnodes)+1),rg,'{}_selfloop.csv'.format(algorithm))
 
 
-def save_csv(output,name,sparsematrix):
-    fn = os.path.join(output,name)
+def save_csv(sparsematrix,rg,name):
+    fn = os.path.join(rg.path,name)
     np.savetxt(fn, sparsematrix.toarray(), delimiter=",", fmt='%.5f')
     print('{} CSV saved!'.format(fn))
 
@@ -347,16 +397,16 @@ isdirected = False
 isweighted = False
 ismultigraph = True
 dependency = c.LOCAL
-algorithm = 'randomwalker'
+algorithm = 'colorgraph'
 kmax = 10
 klogscale = False
 krank = 10
-tocsv = True
+tocsv = False
 
 nnodes = int(sys.argv[1])
 walks = 2 * nnodes
 
-output = '../resources/colorgraph-{}-{}-{}nodes-kmax{}-{}walks'.format(dependency,'logscale' if klogscale else 'intscale',nnodes,kmax,walks)
+output = '../resources/{}-{}-{}-{}nodes-kmax{}-{}walks'.format(algorithm,dependency,'logscale' if klogscale else 'intscale',nnodes,kmax,walks)
 
 if not os.path.exists(output):
         os.makedirs(output)
@@ -374,10 +424,10 @@ rg = RandomWalkGraph(nnodes=nnodes,
 
 rg.createGraph()
 
-h1 = build_hypothesis(rg.G,homophily,selfloops)
-h2 = build_hypothesis(rg.G,heterophily,selfloops)
+h1 = build_hypothesis(rg,homophily,selfloops)
+h2 = build_hypothesis(rg,heterophily,selfloops)
 
-run_janus(rg.data,isdirected,isweighted,ismultigraph,dependency,algorithm,output,kmax,klogscale,krank,tocsv,
+run_janus(rg,isdirected,isweighted,ismultigraph,dependency,algorithm,output,kmax,klogscale,krank,tocsv,
           homophily=h1,
           heterophily=h2)
 
