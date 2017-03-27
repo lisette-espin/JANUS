@@ -1,0 +1,11 @@
+Data generated as coauthorship
+===== RANK k=10 =====
+data                     -57.545
+B1: same-country         -60.834
+B2: same-gender          -64.760
+B3: hierarchy            -66.623
+B5: popularity-publications-68.113
+B4: popularity           -69.068
+B6: popularity-citations -69.247
+B7: proximity            -80.530
+uniform                  -89.703

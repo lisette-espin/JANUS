@@ -1,0 +1,14 @@
+===== SUMMARY OF EXECUTION =====
+OUTPUT: ../resources/coauthorship-local
+NNODES: 4
+NEDGES: 88
+ISDIRECTED: False
+ISWEIGHTED: False
+ISMULTIGRAPH: True
+DEPENDENCY: local
+ALGORITHM: coauthorship
+CLASSTYPE: adjacency_matrix
+SHAPE: (4, 4)
+SUM DATA: 88.0
+UNIQUE EDGES: 12
+RUNTIME: 8.68258786201 seconds

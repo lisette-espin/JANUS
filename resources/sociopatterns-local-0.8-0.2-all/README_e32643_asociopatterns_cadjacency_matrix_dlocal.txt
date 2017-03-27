@@ -9,5 +9,5 @@ DEPENDENCY: local
 ALGORITHM: sociopatterns
 CLASSTYPE: adjacency_matrix
 SHAPE: (75, 75)
-SUM DATA: 65286
+SUM DATA: 65286.0
 UNIQUE EDGES: 1152

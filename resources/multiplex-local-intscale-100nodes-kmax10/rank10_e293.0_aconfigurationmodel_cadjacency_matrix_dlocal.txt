@@ -1,0 +1,14 @@
+Data generated as configurationmodel
+===== RANK k=10 =====
+data                     -1321.607
+epsilon10p               -1541.615
+epsilon20p               -1712.730
+epsilon30p               -1920.270
+epsilon40p               -2152.278
+epsilon50p               -2336.858
+epsilon60p               -2572.843
+uniform                  -2686.247
+epsilon70p               -2833.062
+epsilon80p               -3154.994
+epsilon90p               -3396.392
+epsilon100p              -3787.405

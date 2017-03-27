@@ -1,0 +1,13 @@
+===== SUMMARY OF EXECUTION =====
+OUTPUT: ../resources/twitter-reply-global
+NNODES: 38918
+NEDGES: 36902
+ISDIRECTED: True
+ISWEIGHTED: False
+ISMULTIGRAPH: True
+DEPENDENCY: global
+ALGORITHM: twitter-reply
+CLASSTYPE: adjacency_matrix
+SHAPE: (38918, 38918)
+SUM DATA: 36902.0
+UNIQUE EDGES: 32523

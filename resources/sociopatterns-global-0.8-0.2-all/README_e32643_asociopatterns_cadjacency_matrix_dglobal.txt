@@ -1,0 +1,13 @@
+===== SUMMARY OF EXECUTION =====
+OUTPUT: ../resources/sociopatterns-global-0.8-0.2-all/
+NNODES: 75
+NEDGES: 32643
+ISDIRECTED: False
+ISWEIGHTED: False
+ISMULTIGRAPH: True
+DEPENDENCY: global
+ALGORITHM: sociopatterns
+CLASSTYPE: adjacency_matrix
+SHAPE: (75, 75)
+SUM DATA: 65286.0
+UNIQUE EDGES: 1152

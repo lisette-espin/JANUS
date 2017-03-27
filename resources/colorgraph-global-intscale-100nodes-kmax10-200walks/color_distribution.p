@@ -1,0 +1,16 @@
+(dp0
+S'blue'
+p1
+(dp2
+g1
+I3955
+sS'red'
+p3
+I1024
+ssg3
+(dp4
+g1
+I975
+sg3
+I4066
+ss.

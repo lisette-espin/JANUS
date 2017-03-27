@@ -1,0 +1,9 @@
+Data generated as twitter-reply
+===== RANK k=10 =====
+data                     -384313.495
+mention                  -404705.793
+retweet-mention-social   -484316.015
+social                   -567476.363
+uniform                  -779414.378
+retweet                  -822417.679
+selfloop                 -858268.732

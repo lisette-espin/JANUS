@@ -1,0 +1,14 @@
+===== SUMMARY OF EXECUTION =====
+OUTPUT: ../resources/coauthorship-global
+NNODES: 4
+NEDGES: 88
+ISDIRECTED: False
+ISWEIGHTED: False
+ISMULTIGRAPH: True
+DEPENDENCY: global
+ALGORITHM: coauthorship
+CLASSTYPE: adjacency_matrix
+SHAPE: (4, 4)
+SUM DATA: 88.0
+UNIQUE EDGES: 12
+RUNTIME: 12.0514709949 seconds

@@ -49,7 +49,7 @@ def run_janus(algorithm,isdirected,isweighted,ismultigraph,dependency,output,kma
     ### 3. create hypotheses
     janus.createHypothesis('data')
     janus.createHypothesis('uniform')
-    janus.createHypothesis('selfloop')
+    #janus.createHypothesis('selfloop')
 
     m1 = getMatrix(['same-country'],output)
     janus.createHypothesis('B1: same-country',m1)
